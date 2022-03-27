@@ -42,7 +42,7 @@ def startClient():
     fileExistsChecker = clientSocket.recv(packetSize).decode()
     #printa el estado
     print(fileExistsChecker)
-
+    
     #si lo ha encontrado, recoge el tamaño del archivo para informar del estado de la descarga
 
     if "encontrado" in fileExistsChecker:
