@@ -3,7 +3,6 @@ from http import client
 import sys
 from socket import *
 
-
 print("##############################################")
 print("#####                                    #####")
 print("#####          TCP CLIENT - GET          #####")
