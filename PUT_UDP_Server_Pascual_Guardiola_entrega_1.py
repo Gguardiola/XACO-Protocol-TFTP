@@ -21,11 +21,11 @@ except OSError:
 	print("[SERVIDOR]: Puerto en uso. Cambiando al {}".format(serverPort))
 
 while True:
-	message, clientAddress = serverSocket.recvfrom(size)	
-	client_msg = message.decode()
+	print ("LISTO - El servidor está esperando por el puerto {}".format(serverPort))
+	message, clientAddress = serverSocket.recvfrom(size)
 
 	print("CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
-	command = client_msg.split()
+	command = message.decode().split()
 	if len(command) > 0:
 		if command[0].upper() == 'PUT':
 
@@ -38,10 +38,10 @@ while True:
 			while( len(data) > 0):
 
 				f.write(data)
+				print("[SERVIDOR]:  Descargando [{}] {} (bytes)".format(command[1],packetsRecv))	
 				if len(data) == size:
 					data, serverAddress = serverSocket.recvfrom(size)
-					packetsRecv += len(data)
-					print("[SERVIDOR]:  Descargando [{}] {} (bytes)".format(command[1],packetsRecv))					
+					packetsRecv += len(data)				
 				else:
 					print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
 					data = bytes()
