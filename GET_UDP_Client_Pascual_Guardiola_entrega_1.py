@@ -1,8 +1,6 @@
 
 from socket import *
 
-from urllib3 import Timeout
-
 
 print("##############################################")
 print("#####                                    #####")
