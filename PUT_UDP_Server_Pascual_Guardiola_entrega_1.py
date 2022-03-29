@@ -9,7 +9,7 @@ print("##############################################")
 # Default to listening on port 12000
 serverPort = 12004
 size = 1024
-
+# https://prod.liveshare.vsengsaas.visualstudio.com/join?971C345B9ABA4B05CFD33C1C3A0E83F059E0
 # Setup IPv4 UDP socket
 serverSocket = socket(AF_INET, SOCK_DGRAM)
 
