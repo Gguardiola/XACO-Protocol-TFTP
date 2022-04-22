@@ -27,7 +27,7 @@ except OSError:
 	serverSocket.bind(('',serverPort))
 
 
-def startServer():
+def startServer(packetSize):
 	# Start listening on the welcoming port
 	serverSocket.listen(1)
 	print ("LISTO - El servidor está escuchando por el puerto {}".format(serverPort))
@@ -55,13 +55,17 @@ def startServer():
 
 		#se queda solo con el filename
 		filename = clientMsg[1]
+		#recibe el tamaño del paquete del cliente
+		newSize = connectionSocket.recv(packetSize)
+		packetSize = int(newSize.decode())
+		print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(packetSize))
 
 		#recibe el primer paquete del archivo
 		file = connectionSocket.recv(packetSize)
 		#packetsRecv guarda la cantidad de bytes que se han descargado del archivo
 		packetsRecv = len(file)
 		#DEBUG - para comprobar la descarga en localhost
-		#filename = "test.txt"
+		filename = "test.txt"
 		#crea el fichero en local
 		try:
 			f = open(filename, "wb")
@@ -91,4 +95,4 @@ def startServer():
 
 
 while True:
-	startServer()
+	startServer(packetSize)

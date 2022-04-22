@@ -16,11 +16,12 @@ print("##############################################")
 
 method = "PUT"
 
-serverName = '192.168.1.200'
+serverName = 'localhost'
 serverPort = 12004
 packetSize = 1024
+packetSizeOpt = [32,64,128,256,512,1024,2048]
 
-def startClient():
+def startClient(packetSize):
     while True:
         filename = input("Nombre del archivo: ")
 
@@ -36,7 +37,7 @@ def startClient():
     try:
         f = open(filename,"rb")
         #lee los n primeros bytes -> Va leyendo el archivo segmentado para enviarlo en paquetes al servidor
-        file = f.read(packetSize)
+        
         #recoge la mida total para informar cuanto queda por enviar
         totalSize = os.path.getsize(filename)
         #informa al cliente de que el se ha encontrado.
@@ -55,7 +56,23 @@ def startClient():
         clientSocket.close()
         return 0
 
+    #establecer el tamaño del paquete
+    newSize = 0
+    while newSize not in packetSizeOpt:
+        try:
+            newSize = int(input("Tamaño del paquete: "))
+            if newSize not in packetSizeOpt:
+                print("ERROR - Introduce un valor entre 32 y 2048.")
+        except AttributeError:
+            print("ERROR - Introduce un valor numerico.")
+    newSize = str(newSize)
+    packetSize = int(newSize)
+    #envia el tamaño del paquete
+    clientSocket.send(newSize.encode())
+    print("Tamaño del paquete establecido en " + newSize + " bytes.")
     #packetsSended guarda el avance del envio del archivo
+    #recibe el primer paquete del archivo
+    file = f.read(packetSize)
     packetsSended = len(file)
 
     while len(file) > 0:
@@ -92,7 +109,7 @@ while True:
         sys.exit()
         
     try:
-        startClient()
+        startClient(packetSize)
     except ConnectionResetError as e:
         print(e)
         sys.exit()

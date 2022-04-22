@@ -23,16 +23,22 @@ except OSError:
 while True:
 	print ("LISTO - El servidor está esperando por el puerto {}".format(serverPort))
 	message, clientAddress = serverSocket.recvfrom(size)
-
 	print("CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
 	command = message.decode().split()
+	print(command)
 	if len(command) > 0:
-		if command[0].upper() == 'PUT':
 
+		if command[0].upper() == 'PUT':
+			newSize, serverAddress = serverSocket.recvfrom(size)
+			print("SIZE " + newSize.decode())
+			size = int(newSize.decode())
+			print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(size))
+			#recibimos el primer paquete
 			data, serverAddress = serverSocket.recvfrom(size)
+			print("DATA " + data.decode())
 			#DEBUG
-			#filename = "test2.txt"
-			filename = command[1]
+			filename = "test2.txt"
+			#filename = command[1]
 			f = open(filename, "wb")
 			packetsRecv = len(data)
 			while( len(data) > 0):
