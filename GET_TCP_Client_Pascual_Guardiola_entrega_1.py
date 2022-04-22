@@ -1,4 +1,5 @@
 from ast import While
+from hashlib import new
 from http import client
 import sys
 from socket import *
@@ -13,13 +14,13 @@ print("##############################################")
 
 
 method = "GET"
-
-serverName = '192.168.1.200'
+serverName = 'localhost'
 serverPort = 12004
 packetSize = 1024
+packetSizeOpt = [32,64,128,256,512,1024,2048]
 # Request IPv4 and TCP communication
 
-def startClient():
+def startClient(packetSize):
            
     while True:
         filename = input("Nombre del archivo: ")
@@ -50,7 +51,21 @@ def startClient():
 
     else:
         return 0
-        
+    #establecer el tamaño del paquete
+
+    newSize = 0
+    while newSize not in packetSizeOpt:
+        try:
+            newSize = int(input("Tamaño del paquete: "))
+            if newSize not in packetSizeOpt:
+                print("ERROR - Introduce un valor entre 32 y 2048.")
+        except AttributeError:
+            print("ERROR - Introduce un valor numerico.")
+    newSize = str(newSize)
+    packetSize = int(newSize)
+    #envia el tamaño del paquete
+    clientSocket.send(newSize.encode())
+    print("Tamaño del paquete establecido en " + newSize + " bytes.")
     #recibe el primer paquete del archivo
     fileFromServer = clientSocket.recv(packetSize)
     #packetsRecv guarda la cantidad de bytes que se han descargado del archivo
@@ -100,7 +115,7 @@ while True:
         sys.exit()
 
     try:
-        startClient()
+        startClient(packetSize)
     except ConnectionResetError as e:
         print(e)
         sys.exit()

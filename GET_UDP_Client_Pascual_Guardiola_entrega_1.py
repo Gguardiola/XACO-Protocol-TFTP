@@ -15,6 +15,7 @@ print("##############################################")
 serverName = 'localhost'
 serverPort = 12004
 packetSize = 1024
+packetSizeOpt = [32,64,128,256,512,1024,2048]
 method = "GET"
 # Request IPv4 and UDP communication
 
@@ -36,22 +37,38 @@ try:
 	client_msg = method + " " + filename
 
 	if method.upper() == 'GET':
-
+		#establecer el tamaño del paquete
+		newSize = 0
+		while newSize not in packetSizeOpt:
+			try:
+				newSize = int(input("Tamaño del paquete: "))
+				if newSize not in packetSizeOpt:
+					print("ERROR - Introduce un valor entre 32 y 2048.")
+			except AttributeError:
+				print("ERROR - Introduce un valor numerico.")
+	
 		#enviamos el comando con el fichero que vamos a subir
 		clientSocket.sendto(client_msg.encode(),(serverName,serverPort))
 
+		newSize = str(newSize)
+		packetSize = int(newSize)
+		#envia el tamaño del paquete
+		clientSocket.sendto(newSize.encode(),(serverName,serverPort))
+		print("Tamaño del paquete establecido en " + newSize + " bytes.")	
+		
 		data, serverAddress = clientSocket.recvfrom(packetSize)
 
 		#DEBUG
-		#filename = "test.txt"
+		filename = "test.txt"
 		f = open(filename, "wb")
 		packetsRecv = len(data)
 		while len(data) > 0:
 			f.write(data)
+			print("Descargando [{}] {} (bytes)".format(filename,packetsRecv))
 			if len(data) == packetSize:
 				data, serverAddress = clientSocket.recvfrom(packetSize)
 				packetsRecv += len(data)
-				print("Descargando [{}] {} (bytes)".format(filename,packetsRecv))			
+							
 			else:
 				print("{} DESCARGADO CON ÉXITO.".format(filename))
 				data = bytes()

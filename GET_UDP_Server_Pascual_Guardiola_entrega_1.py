@@ -38,6 +38,10 @@ while True:
 			
 			try:
 				f = open(command[1], "rb")
+				newSize, serverAddress = serverSocket.recvfrom(size)
+				size = int(newSize.decode())
+				print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(size))
+						
 				data = f.read(size)
 				packetsSended = len(data)
 				totalSize = os.path.getsize(command[1])

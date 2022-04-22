@@ -1,3 +1,4 @@
+from hashlib import new
 from http import client
 import os
 from socket import *
@@ -24,7 +25,7 @@ except OSError:
 	print("[SERVIDOR]: Puerto en uso. Cambiando al {}".format(serverPort))
 	serverSocket.bind(('',serverPort))
 
-def startServer():
+def startServer(packetSize):
 	# Start listening on the welcoming port
 	serverSocket.listen(1)
 	print ("LISTO - El servidor está escuchando por el puerto {}".format(serverPort))
@@ -50,24 +51,30 @@ def startServer():
 
 		#busca si existe el archivo. EXCEPT FILENOTFOUNDERROR: cierra conexión e informa al cliente.
 		try:
-			f = open(clientMsg,"rb")
-			#lee los n primeros bytes -> Va leyendo el archivo segmentado para enviarlo en paquetes al cliente
-			file = f.read(packetSize)
+			f = open(clientMsg,"rb")			
 			#recoge la mida total para informar cuanto queda por enviar
 			totalSize = os.path.getsize(clientMsg)
 			#informa al cliente de que el se ha encontrado.
 			#de paso le envia la mida total del archivo
 			connectionSocket.send("[SERVIDOR]: Fichero: |{}| Peso: |{}| encontrado, enviando...".format(clientMsg,totalSize).encode())
+
 		except FileNotFoundError:
 			connectionSocket.send("[SERVIDOR]: No se encuentra el fichero en el servidor!. CERRANDO CONEXIÓN".encode())
 			print("[SERVIDOR]: No se encuentra el fichero en el servidor!. CERRANDO CONEXIÓN con {}".format(addr[0]))
 			connectionSocket.close()
 			print("[SERVIDOR]: CONEXIÓN CERRADA CON {}".format(addr[0]))
 			return 0
-		#packetsSended guarda el avance del envio del archivo
-		packetsSended = len(file)
-		#mientras no se haya leido todo el archivo, sigue enviando
 
+		#recibe el tamaño del paquete del cliente
+		newSize = connectionSocket.recv(packetSize)
+		packetSize = int(newSize.decode())
+		print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(packetSize))
+
+		#lee los n primeros bytes -> Va leyendo el archivo segmentado para enviarlo en paquetes al cliente
+		file = f.read(packetSize)
+		#packetsSended guarda el avance del envio del archivo
+		packetsSended = len(file)	
+		#mientras no se haya leido todo el archivo, sigue enviando	
 		try:
 			while len(file) > 0:
 				percent = round(((packetsSended/int(totalSize))*100),2)
@@ -96,4 +103,4 @@ def startServer():
 		print("[SERVIDOR]: CONEXIÓN CERRADA CON {}".format(addr[0]))
 
 while True:
-	startServer()
+	startServer(packetSize)
