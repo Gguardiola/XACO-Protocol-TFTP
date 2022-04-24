@@ -7,7 +7,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          TCP SERVER - GET          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 print("\n")
@@ -40,7 +40,7 @@ def startServer(packetSize):
 		clientMsg = clientMsg.split(" ")	
 
 		if clientMsg[0].upper() != "GET":
-			connectionSocket.send("[SERVIDOR]: Método no compatible. Utiliza el GET para este servidor. CERRANDO CONEXIÓN".encode())
+			connectionSocket.send("Metodo no compatible.".encode())
 			print("[SERVIDOR]: Método no compatible. Utiliza el GET para este servidor. CERRANDO CONEXIÓN")
 			connectionSocket.close()
 			print("[SERVIDOR]: CONEXIÓN CERRADA CON {}".format(addr[0]))
@@ -56,10 +56,10 @@ def startServer(packetSize):
 			totalSize = os.path.getsize(clientMsg)
 			#informa al cliente de que el se ha encontrado.
 			#de paso le envia la mida total del archivo
-			connectionSocket.send("[SERVIDOR]: Fichero: |{}| Peso: |{}| encontrado, enviando...".format(clientMsg,totalSize).encode())
+			connectionSocket.send("encontrado |{}".format(totalSize).encode())
 
 		except FileNotFoundError:
-			connectionSocket.send("[SERVIDOR]: No se encuentra el fichero en el servidor!. CERRANDO CONEXIÓN".encode())
+			connectionSocket.send("ERROR - Conexion cerrada".encode())
 			print("[SERVIDOR]: No se encuentra el fichero en el servidor!. CERRANDO CONEXIÓN con {}".format(addr[0]))
 			connectionSocket.close()
 			print("[SERVIDOR]: CONEXIÓN CERRADA CON {}".format(addr[0]))

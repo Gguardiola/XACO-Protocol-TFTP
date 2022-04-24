@@ -6,7 +6,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP CLIENT - GET          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -54,29 +54,37 @@ try:
 		packetSize = int(newSize)
 		#envia el tamaño del paquete
 		clientSocket.sendto(newSize.encode(),(serverName,serverPort))
-		print("Tamaño del paquete establecido en " + newSize + " bytes.")	
-		
-		data, serverAddress = clientSocket.recvfrom(packetSize)
+		print("Tamaño del paquete establecido en " + newSize + " bytes.")
 
-		#DEBUG
-		filename = "test.txt"
-		f = open(filename, "wb")
-		packetsRecv = len(data)
-		while len(data) > 0:
-			f.write(data)
-			print("Descargando [{}] {} (bytes)".format(filename,packetsRecv))
-			if len(data) == packetSize:
-				data, serverAddress = clientSocket.recvfrom(packetSize)
-				packetsRecv += len(data)
-							
-			else:
-				print("{} DESCARGADO CON ÉXITO.".format(filename))
-				data = bytes()
-				
+		fileExistsChecker = True
+		totalSize, serverAddress = clientSocket.recvfrom(packetSize)
+		totalSize = totalSize.decode()
+		#si lo ha encontrado, recoge el tamaño del archivo para informar del estado de la descarga
+		if "encontrado" in totalSize:
+			totalSize = totalSize.split("|");totalSize = totalSize[1]
 
+		else:
+			fileExistsChecker = False	
 
-		f.close()	
-		clientSocket.close()
+		if fileExistsChecker:
+			#recibimos el primer paquete		
+			data, serverAddress = clientSocket.recvfrom(packetSize)
+
+			#DEBUG
+			filename = "test.txt"
+			f = open(filename, "wb")
+			packetsRecv = len(data)
+			while len(data) > 0:
+				f.write(data)
+				print("Descargando [{}] {}/{} (bytes)".format(filename,packetsRecv,totalSize))
+				if len(data) == packetSize:
+					data, serverAddress = clientSocket.recvfrom(packetSize)
+					packetsRecv += len(data)
+					if len(data) == 0:
+						print("{} DESCARGADO CON ÉXITO.".format(filename))				
+
+			f.close()	
+			clientSocket.close()
 
 	else:
 		print("ERROR - Método no soportado")

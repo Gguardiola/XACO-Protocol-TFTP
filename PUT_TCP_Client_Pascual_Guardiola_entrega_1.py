@@ -9,7 +9,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          TCP CLIENT - PUT          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -50,7 +50,7 @@ def startClient(packetSize):
             clientSocket.close()
             return 0
 
-        clientSocket.send("Fichero: |{}| Peso: |{}| encontrado, enviando...".format(filename,totalSize).encode())
+        clientSocket.send("encontrado |{}".format(totalSize).encode())
     except FileNotFoundError:
         print("No se encuentra el fichero!")
         clientSocket.close()

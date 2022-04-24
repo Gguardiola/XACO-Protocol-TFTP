@@ -8,7 +8,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          TCP CLIENT - GET          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -41,13 +41,11 @@ def startClient(packetSize):
     clientSocket.send(client_msg.encode())
     #el cliente espera a recibir si ha habido algun error
     fileExistsChecker = clientSocket.recv(packetSize).decode()
-    #printa el estado
-    print(fileExistsChecker)
-    
+ 
     #si lo ha encontrado, recoge el tamaño del archivo para informar del estado de la descarga
 
     if "encontrado" in fileExistsChecker:
-        totalSize = fileExistsChecker.split("|");totalSize = totalSize[3]
+        totalSize = fileExistsChecker.split("|");totalSize = totalSize[1]
 
     else:
         return 0
@@ -71,7 +69,7 @@ def startClient(packetSize):
     #packetsRecv guarda la cantidad de bytes que se han descargado del archivo
     packetsRecv = len(fileFromServer)
     #DEBUG - para comprobar la descarga en localhost
-    #filename = "test.txt"
+    filename = "test.txt"
     #crea el fichero en local
 
     try:

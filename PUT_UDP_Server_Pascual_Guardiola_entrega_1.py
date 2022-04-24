@@ -3,7 +3,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP SERVER - PUT          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 # Default to listening on port 12000
@@ -33,22 +33,34 @@ while True:
 			print("SIZE " + newSize.decode())
 			size = int(newSize.decode())
 			print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(size))
-			#recibimos el primer paquete
-			data, serverAddress = serverSocket.recvfrom(size)
-			#DEBUG
-			filename = "test2.txt"
-			#filename = command[1]
-			f = open(filename, "wb")
-			packetsRecv = len(data)
-			while( len(data) > 0):
 
-				f.write(data)
-				print("[SERVIDOR]:  Descargando [{}] {} (bytes)".format(command[1],packetsRecv))	
-				if len(data) == size:
-					data, serverAddress = serverSocket.recvfrom(size)
-					packetsRecv += len(data)				
-				else:
-					print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
-					data = bytes()
+			fileExistsChecker = True
+			totalSize, serverAddress = serverSocket.recvfrom(size)
+			totalSize = totalSize.decode()
+			#si lo ha encontrado, recoge el tamaño del archivo para informar del estado de la descarga
+			if "encontrado" in totalSize:
+				totalSize = totalSize.split("|");totalSize = totalSize[1]
 
+			else:
+				fileExistsChecker = False
+
+			if fileExistsChecker:
+				#recibimos el primer paquete
+				data, serverAddress = serverSocket.recvfrom(size)
+				#DEBUG
+				filename = "test2.txt"
+				#filename = command[1]
+				f = open(filename, "wb")
+				packetsRecv = len(data)
+				while( len(data) > 0):
+
+					f.write(data)
+					print("[SERVIDOR]:  Descargando [{}] {}/{} (bytes)".format(command[1],packetsRecv,totalSize))
+					if len(data) == size:
+						data, serverAddress = serverSocket.recvfrom(size)
+						packetsRecv += len(data)	
+						if len(data) == 0:
+							print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
+			else:
+				print("[SERVIDOR]: {} NO ENCONTRADO.".format(command[1]))	
 			f.close()

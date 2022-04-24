@@ -4,7 +4,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP CLIENT - PUT          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -59,6 +59,8 @@ try:
 		packetsSended = len(data)
 		totalSize = os.path.getsize(filename)
 
+		clientSocket.sendto("encontrado |{}".format(totalSize).encode(),(serverName,serverPort))
+		
 		while (len(data) > 0):
 			percent = round(((packetsSended/int(totalSize))*100),2)
 			if (clientSocket.sendto(data, (serverName, serverPort))):
@@ -71,8 +73,6 @@ try:
 					if (len(data) == 0): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
 						print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
 						clientSocket.sendto(data, (serverName, serverPort))
-				else:
-					data = bytes()
 
 		f.close()
 

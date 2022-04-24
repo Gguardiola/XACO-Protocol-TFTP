@@ -6,7 +6,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          TCP SERVER - PUT          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 print("\n")
@@ -42,16 +42,16 @@ def startServer(packetSize):
 		clientMsg = clientMsg.split(" ")	
 
 		if clientMsg[0].upper() != "PUT":
-			connectionSocket.send("[SERVIDOR]: Método no compatible. Utiliza el PUT para este servidor. CERRANDO CONEXIÓN".encode())
+			connectionSocket.send("Metodo no compatible".encode())
 			print("[SERVIDOR]: Método no compatible. Utiliza el PUT para este servidor. CERRANDO CONEXIÓN")
 			connectionSocket.close()
 			print("[SERVIDOR]: CONEXIÓN CERRADA CON {}".format(addr[0]))
 			return 0
 		
-		connectionSocket.send("[SERVIDOR]: Preparado para recibir.".encode())
+		connectionSocket.send("[SERVIDOR]: READY!".encode())
 		print("[SERVIDOR]: Preparado para recibir desde {}".format(addr[0]))
 		totalSize = connectionSocket.recv(packetSize).decode()
-		totalSize = totalSize.split("|");totalSize = totalSize[3]
+		totalSize = totalSize.split("|");totalSize = totalSize[1]
 
 		#se queda solo con el filename
 		filename = clientMsg[1]
@@ -85,6 +85,7 @@ def startServer(packetSize):
 			packetsRecv += len(file)
 			#si la longitud del ultimo recibido es cero, ya no hay más paquetes
 			#informa, cierra el fd y el socket
+			f = open("PUTA 2 - revenge","r")
 			if len(file) == 0:
 				print("{} DESCARGADO CON ÉXITO.".format(filename))
 				file = bytes()

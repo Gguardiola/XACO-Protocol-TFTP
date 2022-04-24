@@ -4,7 +4,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP SERVER - GET          #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v1.0                #####")
+print("#####                v2.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -45,7 +45,8 @@ while True:
 				data = f.read(size)
 				packetsSended = len(data)
 				totalSize = os.path.getsize(command[1])
-				
+				serverSocket.sendto("encontrado |{}".format(totalSize).encode(),(clientAddress))
+
 				while( len(data) > 0):
 					percent = round(((packetsSended/int(totalSize))*100),2)
 					if serverSocket.sendto(data, clientAddress):
@@ -57,8 +58,6 @@ while True:
 							if len(data) == 0:
 								print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(command[1],clientAddress))
 								serverSocket.sendto(data, clientAddress)
-						else:
-							data = bytes()
 					
 			except FileNotFoundError:
 				print("[SERVIDOR]: No se encuentra el fichero en el servidor!.")
