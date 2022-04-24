@@ -25,7 +25,7 @@ while True:
 	message, clientAddress = serverSocket.recvfrom(size)
 	print("CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
 	command = message.decode().split()
-	print(command)
+
 	if len(command) > 0:
 
 		if command[0].upper() == 'PUT':
@@ -35,7 +35,6 @@ while True:
 			print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(size))
 			#recibimos el primer paquete
 			data, serverAddress = serverSocket.recvfrom(size)
-			print("DATA " + data.decode())
 			#DEBUG
 			filename = "test2.txt"
 			#filename = command[1]

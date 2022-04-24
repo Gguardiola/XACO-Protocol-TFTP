@@ -53,8 +53,6 @@ try:
 		#envia el tamaño del paquete
 		clientSocket.sendto(newSize.encode(),(serverName,serverPort))
 		print("Tamaño del paquete establecido en " + newSize + " bytes.")	
-		#envias el primer paquete		
-		clientSocket.sendto(client_msg.encode(),(serverName,serverPort))
 		
 		f = open(filename, "rb")
 		data = f.read(size)
