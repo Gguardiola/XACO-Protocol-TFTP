@@ -1,3 +1,4 @@
+from pickle import TRUE
 from socket import *
 import os
 print("##############################################")
@@ -61,24 +62,32 @@ try:
 
 		clientSocket.sendto("encontrado |{}".format(totalSize).encode(),(serverName,serverPort))
 		
-		while (len(data) > 0):
+		while True:
 			percent = round(((packetsSended/int(totalSize))*100),2)
 			if (clientSocket.sendto(data, (serverName, serverPort))):
 				
 				print("Enviando [{}] {}/{} (bytes) - {}%".format(filename,packetsSended,totalSize,percent))
-					
 				if(len(data) == size):
 					data = f.read(size)
 					packetsSended += len(data)
-					if (len(data) == 0): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
-						print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
-						clientSocket.sendto(data, (serverName, serverPort))
-
+				if(len(data) == 0):
+					print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
+					clientSocket.sendto(bytes(), (serverName, serverPort))
+					break
+				elif(len(data) < size): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
+					clientSocket.sendto(data, (serverName, serverPort))
+					data = f.read(size)
+					packetsSended += len(data)
+					percent = round(((packetsSended/int(totalSize))*100),2)
+					print("Enviando [{}] {}/{} (bytes) - {}%".format(filename,packetsSended,totalSize,percent))
+					print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
+					clientSocket.sendto(bytes(), (serverName, serverPort))
+					break
 		f.close()
 
 except FileNotFoundError:
 	print("[SERVIDOR]: No se encuentra el fichero en el servidor!.")
 	clientSocket.sendto(bytes(), (serverName, serverPort))
 
-clientSocket.close()
+clientSocket.close() #ILEGAL putada de las gordas
 

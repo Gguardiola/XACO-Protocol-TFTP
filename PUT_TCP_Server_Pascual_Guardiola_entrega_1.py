@@ -65,7 +65,7 @@ def startServer(packetSize):
 		#packetsRecv guarda la cantidad de bytes que se han descargado del archivo
 		packetsRecv = len(file)
 		#DEBUG - para comprobar la descarga en localhost
-		filename = "test.txt"
+		#filename = "test.txt"
 		#crea el fichero en local
 		try:
 			f = open(filename, "wb")
