@@ -85,7 +85,6 @@ def startServer(packetSize):
 			packetsRecv += len(file)
 			#si la longitud del ultimo recibido es cero, ya no hay más paquetes
 			#informa, cierra el fd y el socket
-			f = open("PUTA 2 - revenge","r")
 			if len(file) == 0:
 				print("{} DESCARGADO CON ÉXITO.".format(filename))
 				file = bytes()

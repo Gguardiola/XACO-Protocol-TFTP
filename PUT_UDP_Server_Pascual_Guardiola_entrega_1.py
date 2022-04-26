@@ -30,7 +30,7 @@ while True:
 
 		if command[0].upper() == 'PUT':
 			newSize, serverAddress = serverSocket.recvfrom(size)
-			print("SIZE " + newSize.decode())
+			#print("SIZE " + newSize.decode())
 			size = int(newSize.decode())
 			print("[SERVIDOR]: Tamaño de paquetes establecido a {} bytes.".format(size))
 
