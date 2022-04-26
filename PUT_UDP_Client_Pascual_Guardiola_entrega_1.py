@@ -70,9 +70,11 @@ try:
 				if(len(data) == size):
 					data = f.read(size)
 					packetsSended += len(data)
-					if (len(data) == 0): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
-						print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
+					if (len(data) < size): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
 						clientSocket.sendto(data, (serverName, serverPort))
+						print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
+						clientSocket.sendto(bytes(), (serverName, serverPort))
+						
 
 		f.close()
 

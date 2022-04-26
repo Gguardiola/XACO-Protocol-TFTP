@@ -59,6 +59,12 @@ while True:
 					if len(data) == size:
 						data, serverAddress = serverSocket.recvfrom(size)
 						packetsRecv += len(data)	
+					if len(data) < size:
+						data, serverAddress = serverSocket.recvfrom(len(data))
+						packetsRecv += len(data)
+						f.write()
+						print("[SERVIDOR]:  Descargando [{}] {}/{} (bytes)".format(command[1],packetsRecv,totalSize))
+						data, serverAddress = serverSocket.recvfrom(size)
 						if len(data) == 0:
 							print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
 			else:
