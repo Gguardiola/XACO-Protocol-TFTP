@@ -26,11 +26,12 @@ except OSError:
 	serverSocket.bind(('', serverPort))
 	print("[SERVIDOR]: Puerto en uso. Cambiando al {}".format(serverPort))
 
-print ("LISTO - El servidor listo para recibir por el puerto {}".format(serverPort))
+
 while True:
+	print ("LISTO - El servidor listo para recibir por el puerto {}".format(serverPort))
 	message, clientAddress = serverSocket.recvfrom(size)
 	client_msg = message.decode()
-	
+	print("debug {}".format(client_msg))
 	print("CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
 	command = client_msg.split()
 	if len(command) > 0:
@@ -50,17 +51,15 @@ while True:
 				while( len(data) > 0):
 					percent = round(((packetsSended/int(totalSize))*100),2)
 					if serverSocket.sendto(data, clientAddress):
-						print("[SERVIDOR]: Enviando [{}] {}/{} (bytes) - {}%".format(command[1],packetsSended,totalSize,percent))
-					
-						if len(data) == size:
-							data = f.read(size)
-							packetsSended += len(data)
-							if len(data) == 0:
-								print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(command[1],clientAddress))
-								serverSocket.sendto(data, clientAddress)
+						print("[SERVIDOR]: Enviando [{}] {}/{} (bytes) - {}%".format(command[1],packetsSended,totalSize,percent))	
+						data = f.read(size)
+						packetsSended += len(data)
+				print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(command[1],clientAddress))
+				serverSocket.sendto(bytes(), clientAddress)	#Debería de ser bytes()? (Antes estaba data)
+				f.close()
+				#Client socket?				
 					
 			except FileNotFoundError:
 				print("[SERVIDOR]: No se encuentra el fichero en el servidor!.")
 				serverSocket.sendto(bytes(), clientAddress)
-
-			f.close()
+				break	#Arregla un bug, si no hay break, como el cliente tiene 2 inputs (name.txt y sizePacket) detecta el sizePacket como segundo nombre de archivo

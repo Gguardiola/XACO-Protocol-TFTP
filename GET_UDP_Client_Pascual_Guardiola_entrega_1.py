@@ -77,15 +77,11 @@ try:
 			while len(data) > 0:
 				f.write(data)
 				print("Descargando [{}] {}/{} (bytes)".format(filename,packetsRecv,totalSize))
-				if len(data) == packetSize:
-					data, serverAddress = clientSocket.recvfrom(packetSize)
-					packetsRecv += len(data)
-					if len(data) == 0:
-						print("{} DESCARGADO CON ÉXITO.".format(filename))				
-
+				data, serverAddress = clientSocket.recvfrom(packetSize)
+				packetsRecv += len(data)							
+			print("{} DESCARGADO CON ÉXITO.".format(filename))	
 			f.close()	
 			clientSocket.close()
-
 	else:
 		print("ERROR - Método no soportado")
 		clientSocket.close()
