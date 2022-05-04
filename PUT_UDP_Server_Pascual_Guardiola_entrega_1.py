@@ -71,13 +71,13 @@ while True:
 						if len(data) == 0:
 							print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
 							break
+						print("nunca llega")
 						packetsRecv += len(data)
 						f.write(data)
 						print("[SERVIDOR]:  Descargando [{}] {}/{} (bytes)".format(command[1],packetsRecv,totalSize))
 						data, serverAddress = serverSocket.recvfrom(size)
 						
 						break
-						
+				f.close()	
 			else:
-				print("[SERVIDOR]: {} NO ENCONTRADO.".format(command[1]))	
-			f.close()
+				print("[SERVIDOR]: {} NO ENCONTRADO.".format(command[1]))

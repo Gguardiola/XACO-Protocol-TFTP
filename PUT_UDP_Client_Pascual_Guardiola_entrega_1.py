@@ -62,7 +62,7 @@ try:
 
 		clientSocket.sendto("encontrado |{}".format(totalSize).encode(),(serverName,serverPort))
 		
-		while True:
+		while len(data) > 0:
 			percent = round(((packetsSended/int(totalSize))*100),2)
 			if (clientSocket.sendto(data, (serverName, serverPort))):
 				
@@ -70,22 +70,14 @@ try:
 				if(len(data) == size):
 					data = f.read(size)
 					packetsSended += len(data)
-				if(len(data) == 0):
-					print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
-					clientSocket.sendto(bytes(), (serverName, serverPort))
-					break
 				elif(len(data) < size): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
-					print("chivato del cl quiero saber len(data) ANTES DE SENDTO:{}".format(len(data)))
-					clientSocket.sendto(data, (serverName, serverPort))
 					print("chivato del client quiero saber len(data):{}".format(len(data)))
 					data = f.read(size)
 					print("chivato del client2 quiero saber len(data):{}".format(len(data)))
 					packetsSended += len(data)
-					percent = round(((packetsSended/int(totalSize))*100),2)
-					print("Enviando [{}] {}/{} (bytes) - {}%".format(filename,packetsSended,totalSize,percent))
-					print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
-					clientSocket.sendto(bytes(), (serverName, serverPort))
 					break
+		print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
+		clientSocket.sendto(bytes(), (serverName, serverPort))
 		f.close()
 
 except FileNotFoundError:
