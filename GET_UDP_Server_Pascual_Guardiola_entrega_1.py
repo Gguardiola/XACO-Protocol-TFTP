@@ -31,7 +31,6 @@ while True:
 	print ("LISTO - El servidor listo para recibir por el puerto {}".format(serverPort))
 	message, clientAddress = serverSocket.recvfrom(size)
 	client_msg = message.decode()
-	print("debug {}".format(client_msg))
 	print("CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
 	command = client_msg.split()
 	if len(command) > 0:
