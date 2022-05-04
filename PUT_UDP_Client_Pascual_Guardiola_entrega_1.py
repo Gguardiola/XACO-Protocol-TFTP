@@ -64,18 +64,12 @@ try:
 		
 		while len(data) > 0:
 			percent = round(((packetsSended/int(totalSize))*100),2)
-			if (clientSocket.sendto(data, (serverName, serverPort))):
-				
+			if (clientSocket.sendto(data, (serverName, serverPort))):	
 				print("Enviando [{}] {}/{} (bytes) - {}%".format(filename,packetsSended,totalSize,percent))
-				if(len(data) == size):
-					data = f.read(size)
-					packetsSended += len(data)
-				elif(len(data) < size): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
-					print("chivato del client quiero saber len(data):{}".format(len(data)))
-					data = f.read(size)
-					print("chivato del client2 quiero saber len(data):{}".format(len(data)))
-					packetsSended += len(data)
-					break
+				data = f.read(size)
+				packetsSended += len(data)
+		#Cuando es multiple de 2, el "data" nos devuelve un 0, con el cual sale del bucle y llega hasta aquí
+		#Cuando no es multiple de 2, ocurre lo mismo
 		print("{} ENVIADO CON EXITO A {}".format(filename,serverName))
 		clientSocket.sendto(bytes(), (serverName, serverPort))
 		f.close()
@@ -83,6 +77,4 @@ try:
 except FileNotFoundError:
 	print("[SERVIDOR]: No se encuentra el fichero en el servidor!.")
 	clientSocket.sendto(bytes(), (serverName, serverPort))
-
-clientSocket.close() #ILEGAL putada de las gordas
 

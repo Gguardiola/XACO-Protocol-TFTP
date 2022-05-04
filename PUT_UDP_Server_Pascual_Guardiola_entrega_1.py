@@ -57,27 +57,12 @@ while True:
 				f = open(filename, "wb")
 				packetsRecv = len(data)
 				while( len(data) > 0):
-
 					f.write(data)
-					print("he escrito esto {}".format(len(data)))
 					print("[SERVIDOR]:  Descargando [{}] {}/{} (bytes)".format(command[1],packetsRecv,totalSize))
-					if len(data) == size:
-						data, serverAddress = serverSocket.recvfrom(size)	#Aqui recibe el cero cuando es multiple de 2, dejaría de cumplirse el bucle y se acaba
-						print("quiero saber el data que consigo aqui:{}".format(len(data)))
-						packetsRecv += len(data)	
-					elif len(data) < size:
-						print("Chivato len(data):{} size:{}".format(len(data),size))
-						data, serverAddress = serverSocket.recvfrom(len(data))	#AQUI ME ENVÍA EL CERO cuando no es multiple de dos
-						if len(data) == 0:
-							print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
-							break
-						print("nunca llega")
-						packetsRecv += len(data)
-						f.write(data)
-						print("[SERVIDOR]:  Descargando [{}] {}/{} (bytes)".format(command[1],packetsRecv,totalSize))
-						data, serverAddress = serverSocket.recvfrom(size)
-						
-						break
+					data, serverAddress = serverSocket.recvfrom(size)
+					packetsRecv += len(data)
+				#Pasa lo mismo que en el Client, recvfrom nos devuelve un 0 en data, sale del bucle y llega hasta estas líneas
+				print("[SERVIDOR]: {} DESCARGADO CON ÉXITO.".format(command[1]))
 				f.close()	
 			else:
 				print("[SERVIDOR]: {} NO ENCONTRADO.".format(command[1]))
