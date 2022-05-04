@@ -75,8 +75,11 @@ try:
 					clientSocket.sendto(bytes(), (serverName, serverPort))
 					break
 				elif(len(data) < size): # Si es un fichero multiplo de size enviamos un paquete con 0 bytes de datos para comunicar al cliente que hemos acabado
+					print("chivato del cl quiero saber len(data) ANTES DE SENDTO:{}".format(len(data)))
 					clientSocket.sendto(data, (serverName, serverPort))
+					print("chivato del client quiero saber len(data):{}".format(len(data)))
 					data = f.read(size)
+					print("chivato del client2 quiero saber len(data):{}".format(len(data)))
 					packetsSended += len(data)
 					percent = round(((packetsSended/int(totalSize))*100),2)
 					print("Enviando [{}] {}/{} (bytes) - {}%".format(filename,packetsSended,totalSize,percent))
