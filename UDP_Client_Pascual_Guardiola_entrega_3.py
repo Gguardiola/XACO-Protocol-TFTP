@@ -1,8 +1,7 @@
-from logging.handlers import WatchedFileHandler
-from socket import *
-from struct import *                                         
-import os, sys, random, configparser
-
+from socket import *                                    
+import os
+import sys
+import configparser
 
 print("##############################################")
 print("#####                                    #####")
@@ -12,6 +11,8 @@ print("#####                v3.0                #####")
 print("#####                                    #####")
 print("##############################################")
 
+DEBUG_MODE = False
+
 packetType = {
     'RRQ': 1,
     'WRQ': 2,
@@ -19,6 +20,7 @@ packetType = {
     'ACK': 4,
 }   
 
+#Server Options
 serverOptions = configparser.ConfigParser()
 try:
 	serverOptions.read('settings.ini')
@@ -26,15 +28,44 @@ except FileNotFoundError:
 	print("ERROR - No se encuentra el archivo de configuracion.")
 	sys.exit()
 
-#Server Options
 serverName = serverOptions.get('SERVEROPTIONS', 'serverName')
 serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
 opCode = int(serverOptions.get('SERVEROPTIONS', 'opCode'))
 packetSize = int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
 mode = serverOptions.get('SERVEROPTIONS', 'mode')
 
+def setupClient(serverName, serverPort, packetSize, mode):
+	print("##############################################")
+	print("Opciones de configuracion por defecto:")
+	print("Nombre del servidor: {}".format(serverName))
+	print("- Puerto: {}".format(serverPort))
+	print("- Tamano de paquete: {}".format(packetSize))
+	print("- Modo: {}".format(mode))
+	print("")
+	opt = input("Cambiar opciones? (y/n): ")
+	
+	if opt.lower() == 'y':
+		try:
+			serverName = input("Nombre del servidor: ")
+			serverPort = int(input("Puerto: "))
+			packetSize = int(input("Tamano de paquete: "))
+			mode = input("Modo (octet/netascii): ");mode = mode.lower()
+			if len(str(serverName)) == 0: serverName = serverOptions.get('SERVEROPTIONS', 'serverName')
+			if len(str(serverPort)) == 0: serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
+			if len(str(packetSize)) == 0: packetSize =int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
+			if len(str(mode)) == 0: mode = serverOptions.get('SERVEROPTIONS', 'mode')
+			return serverName, serverPort, packetSize, mode
+		except Exception as e:
+			print("ERROR - Opciones incorrectas. {}".format(e))
+			serverName = 0
+			return serverName, serverPort, packetSize, mode
+		
+	else:
+		print("Usando configuración por defecto.")
+		return serverName, serverPort, packetSize, mode
 
 def getFile():
+
 	while True:
 		filename = input("Nombre del archivo: ")
 		if len(filename) == 0:
@@ -48,97 +79,94 @@ def getFile():
 		if opCode == packetType['WRQ']:	
 			#comprobar si el archivo existe
 			pass
+
 	return filename
 	
 def generateRRQ_WRQ(filename):
-	xrqPacket = bytearray()
-	xrqPacket.append(0)
-	xrqPacket.append(opCode)
-	xrqPacket += bytearray(filename.encode('utf-8'))
-	xrqPacket.append(0)
-	xrqPacket += bytearray(bytes(mode, 'utf-8'))
-	xrqPacket.append(0)
+
+	#OP CODE
+	xrqPacket = bytearray();xrqPacket.append(0);xrqPacket.append(opCode)
+	#FILENAME | 0 | MODE | 0
+	xrqPacket += bytearray(filename.encode('utf-8'));xrqPacket.append(0);xrqPacket += bytearray(bytes(mode, 'utf-8'));xrqPacket.append(0)
+	
 	clientSocket.sendto(xrqPacket, serverAddress)
 
 def generateACK(blockNumber):
 
-	ackPacket = bytearray()
-	ackPacket.append(0)
-	ackPacket.append(4)
+	#OP CODE
+	ackPacket = bytearray();ackPacket.append(0);ackPacket.append(4)
+	#BLOCK NUMBER
 	ackPacket += blockNumber.to_bytes(2,'big')
-	print("Enviando ACK {}".format(blockNumber))
+	
+	print("[CLIENTE]: Enviando ACK {}".format(blockNumber))
 	clientSocket.sendto(ackPacket, serverAddress)
-	#Try except para error entrega 4
 
 def sendDATA(blockNumber, data):
-	dataPacket = bytearray()
-	dataPacket.append(0)
-	dataPacket.append(3)
-	dataPacket += blockNumber.to_bytes(2,'big')
-	dataPacket += bytes(data)
+
+	#OP CODE
+	dataPacket = bytearray();dataPacket.append(0);dataPacket.append(3)
+	#BLOCK NUMBER | N DATA
+	dataPacket += blockNumber.to_bytes(2,'big');dataPacket += bytes(data)
+
+	print("[CLIENTE]: Enviando DATA {}".format(blockNumber))
 	clientSocket.sendto(dataPacket, serverAddress)
-	print("Enviando DATA {}".format(blockNumber))
 	#Try except para error entrega 4
 
 def generateGET():
-	#DEBUG
+	
 	save_file = getFile()
 	generateRRQ_WRQ(save_file)
-	filename = "test.txt"
-	if mode == "octet":
-		f = open(filename, "wb")
-	else:
-		f = open(filename, "w")
+	#DEBUG
+	if DEBUG_MODE: filename = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
+
+	if mode == "octet":		f = open(filename, "wb")
+	else:					f = open(filename, "w")
+
 	#Try except para error entrega 4
 	#Primer paquete
 	data, serverAddress = clientSocket.recvfrom(packetSize*2)
 	while len(data[4:]) > 0:
-		#Numero de secuencia del paquete
 		blockNumber = int.from_bytes(data[2:4], "big")
-		print("DATA recibido: {}".format(blockNumber))
-		#Escribo el data en el .txt
-		ESCRIBE = data[4:]
-		if mode == "netascii":
-			f.write(ESCRIBE.decode("utf-8"))
-		else:
-			f.write(ESCRIBE)
-		#Envío el ACK del DATA correspondiente
+		print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
+		newData = data[4:]
+		if mode == "netascii":		f.write(newData.decode("utf-8"))
+		else:						f.write(newData)
+
 		generateACK(blockNumber)
-		#Cojo un nuevo data
+
 		data, serverAddress = clientSocket.recvfrom(packetSize*2)
-	#Ya se ha descargado todo el archivo			
+		
 	print("{} DESCARGADO CON ÉXITO.".format(filename))
-	#Cerramos archivo
 	f.close()	
 
 def generatePUT():
-	save_file = "test2.txt"
+	#DEBUG
+	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
+
 	filename = getFile()
 	generateRRQ_WRQ(save_file)
-	if mode == "octet":
-		f = open(filename,"rb")
-	else:
-		f = open(filename,"r")
+	if mode == "octet":		f = open(filename,"rb")
+	else:					f = open(filename,"r")
+
 	#Try except para error entrega 4
-	blockNumber = 1	#El ACK siempre empezará con un 1
+	blockNumber = 1
 	data = f.read(packetSize-4)
-	#Si el fichero no tiene nada
+
 	if len(data) == 0:
 		sendDATA(blockNumber, bytes("", "utf-8"))
 		WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
-	#Si el fichero no está vacío
+
 	while True:
 		#Espera al ACK
 		WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
-		print("ACK recibido {}".format( (WaitACK[2]<<8) +WaitACK[3]))
+		print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
 		opCode = int.from_bytes(WaitACK[:2], "big")
 
 		if len(data) == 0:
 			break
-		#Podemos recibir un ACK o un error
+
 		if opCode == packetType["ACK"]:
 			ACKErr = int.from_bytes(WaitACK[2:], "big")
-			#Si es un ACK, todo bien
 			if ACKErr == blockNumber:
 				data = f.read(packetSize-4)
 				blockNumber += 1
@@ -148,33 +176,39 @@ def generatePUT():
 				if blockNumber == 0:
 					blockNumber += 1
 		#else no has recibido un ACK -> tenemos un error
-		if mode == "octet":
-			sendDATA(blockNumber, data)
-		else:
-			sendDATA(blockNumber, bytes(data, encoding="utf-8"))
-	#print("ACK recibido {}".format( (WaitACK[2]<<8) +WaitACK[3]))
-	print("Fichero enviado con éxito.")
+		if mode == "octet":		sendDATA(blockNumber, data)
+		else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
+
+	print("[CLIENTE]: Archivo enviado con éxito!")
 	clientSocket.sendto(bytes(), serverAddress)
 	f.close()
 
+#MAIN
+############################################################################################################################
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
+while True:
+	serverName, serverPort, packetSize, mode = setupClient(serverName, serverPort, packetSize, mode)
+	if serverName != 0:
+		opt = input("Debug mode? (y/n): ")
+		if opt.lower() == "y": DEBUG_MODE = True;print("MODO DEBUG ACTIVADO!")
+		break
+
 serverAddress = (serverName, serverPort)
 
 print("Servidor {}:{}".format(serverName, serverPort))
 print("##############################################")
-		
-method = str(input("Metodo? [GET/PUT]: "))
-##ELEGIR NETASCII O OCTET
-#print("generaDATA", sendDATA(10, "ABCDE"))
-if method == "PUT":
+print("MODE: {}".format(mode))
+print("Tamaño de paquetes: {}".format(packetSize))
+while True:		
+	method = str(input("Metodo? [GET/PUT]: "))
+	if method.lower() == "get" or method.lower() == "put":
+		break
+
+if method.lower() == "put":
 	opCode = packetType['WRQ']	#1
 	generatePUT()
-elif method == "GET":
+elif method.lower() == "get":
 	opCode = packetType['RRQ']	#2
 	generateGET()
-print("Conexión finalizada")
-clientSocket.close()
-	
 
-#WRQ -> PUT y el RRQ -> GET
