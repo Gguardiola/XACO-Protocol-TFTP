@@ -1,6 +1,6 @@
 from socket import *
-import configparser
-import sys
+from struct import *                                         
+import os, sys, random, configparser
 
 
 print("##############################################")
@@ -52,21 +52,33 @@ def getFile():
 	
 def generateRRQ_WRQ():
 	xrqPacket = bytearray()
-
 	xrqPacket.append(0)
 	xrqPacket.append(opCode)
 	xrqPacket += bytearray(filename.encode('utf-8'))
-
 	xrqPacket.append(0)
 	xrqPacket +=  bytearray(bytes(mode, 'utf-8'))
 	xrqPacket.append(0)
 	clientSocket.sendto(xrqPacket, serverAddress)
 
 def generateACK(blockNumber):
-	ackPacket = [0,4,blockNumber.to_bytes(2,"big")]
-	ackPacket = bytearray(ackPacket)
+
+	ackPacket = bytearray()
+	ackPacket.append(0)
+	ackPacket.append(4)
+	ackPacket += blockNumber.to_bytes(2,'big')
 	print("ACK, {}".format(blockNumber))
 	clientSocket.sendto(ackPacket, serverAddress)
+	#Try except para error entrega 4
+
+def generateDATA(blockNumber, data):
+	dataPacket = bytearray()
+	dataPacket.append(0)
+	dataPacket.append(3)
+	dataPacket += blockNumber.to_bytes(2,'big')
+	dataPacket = bytes(data)
+	clientSocket.sendto(dataPacket, serverAddress)
+	print("Enviando DATA {}".format(blockNumber))
+	#Try except para error entrega 4
 
 def generateGET():
 
@@ -74,21 +86,19 @@ def generateGET():
 		filename = "test.txt"
 		if mode == "octet":
 			f = open(filename, "wb")
-		elif mode == "netascii":
+		else:
 			f = open(filename, "w")
-		data, serverAddress = clientSocket.recvfrom(packetSize)
-		#packetsRecv = len(data)
+		data, serverAddress = clientSocket.recvfrom(65535)
+
 		while len(data[4:]) > 0:
 			#RECIBE DATA este
-	
 			blockNumber = int.from_bytes(data[2:4], "big")
 			print("DATA, {}".format(blockNumber))
 			#GENERATE ACK
 			generateACK(blockNumber)
-			f.write(data[4:])
-			data, serverAddress = clientSocket.recvfrom(packetSize)
-			#print("Descargando [{}] {}/{} (bytes)".format(filename,packetsRecv,totalSize))
-			#packetsRecv += len(data[4:])							
+			f.write(data[4:].decode())
+			data, serverAddress = clientSocket.recvfrom(65535)
+						
 		print("{} DESCARGADO CON ÉXITO.".format(filename))	
 		f.close()	
 
@@ -96,6 +106,7 @@ def generateGET():
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 serverAddress = (serverName, serverPort)
+
 print("Servidor {}:{}".format(serverName, serverPort))
 print("##############################################")
 		
