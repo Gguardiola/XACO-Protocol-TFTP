@@ -1,3 +1,4 @@
+import time
 from socket import *
 import os
 import configparser 
@@ -82,7 +83,7 @@ def generateGET(filename):
 		else:						f = open(filename, "rb")
 
 		blockNumber = 1
-		data = f.read(packetSize-4)
+		data = f.read(packetSize)
 
 		if len(data) == 0:
 			sendDATA(blockNumber, bytes("", "utf-8"))	
@@ -102,11 +103,16 @@ def generateGET(filename):
 				print("[SERVIDOR]: Recibe ACK {}".format(blockNumberACK))
 
 				if blockNumberACK == blockNumber:
-					data = f.read(packetSize-4)
+
+					data = f.read(packetSize)
 					blockNumber += 1
 					blockNumber = blockNumber%65536
 
 					if blockNumber == 0: blockNumber +=1
+				else:
+					print("[SERVIDOR]: ACK incorrecto. Se esperaba {}".format(blockNumber))
+					
+				
 
 		print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(filename,clientAddress))
 		serverSocket.sendto(bytes(), clientAddress)
@@ -122,20 +128,28 @@ def generatePUT(filename):
 
 	if mode == 'netascii':		f = open(filename,'w') 
 	else:						f = open(filename,'wb')
-
+	
 	while True:
-		data, serverAddress = serverSocket.recvfrom(packetSize*2)
-		if len(data) == 0:	break
+		serverSocket.settimeout(0.2000)
+		try:
+			data, serverAddress = serverSocket.recvfrom(packetSize*2)
+			serverSocket.settimeout(None)
+			if len(data) == 0:	break
 
-		blockNumber = int.from_bytes(data[2:4], "big")
-		print("[SERVIDOR]: DATA recibido {}".format(blockNumber))
-		newData = data[4:]
+			blockNumber = int.from_bytes(data[2:4], "big")
+			print("[SERVIDOR]: Recibe DATA {}".format(blockNumber))
+			newData = data[4:]
 
-		if mode == "netascii":		f.write(newData.decode("utf-8"))
-		else:						f.write(newData)
+			if mode == "netascii":		f.write(newData.decode("utf-8"))
+			else:						f.write(newData)
 
-		generateACK(blockNumber)
-
+			generateACK(blockNumber)
+		except:
+			print("[SERVIDOR]: Error en la entrega de datos.")
+			generateACK(blockNumber)
+			serverSocket.settimeout(None)
+			data, serverAddress = serverSocket.recvfrom(packetSize*2)
+			
 	print("[SERVIDOR]: ARCHIVO DESCARGADOR CON EXITO!")
 	f.close() 
 

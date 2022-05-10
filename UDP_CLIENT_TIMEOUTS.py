@@ -118,39 +118,51 @@ def generateGET():
 	generateRRQ_WRQ(save_file)
 	#DEBUG
 	if DEBUG_MODE: filename = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
-
+	else:		filename = save_file
 	if mode == "octet":		f = open(filename, "wb")
 	else:					f = open(filename, "w")
 
 	#Try except para error entrega 4
 	#Primer paquete
+
+
 	data, serverAddress = clientSocket.recvfrom(packetSize*2)
 	while len(data[4:]) > 0:
-		blockNumber = int.from_bytes(data[2:4], "big")
-		print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
-		newData = data[4:]
-		if mode == "netascii":		f.write(newData.decode("utf-8"))
-		else:						f.write(newData)
+		clientSocket.settimeout(0.1000)
+		try:
+			blockNumber = int.from_bytes(data[2:4], "big")
+			print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
+			newData = data[4:]
+			if mode == "netascii":		f.write(newData.decode("utf-8"))
+			else:						f.write(newData)
 
-		generateACK(blockNumber)
+			
+			generateACK(blockNumber)
 
-		data, serverAddress = clientSocket.recvfrom(packetSize*2)
-		
+			data, serverAddress = clientSocket.recvfrom(packetSize*2)
+			clientSocket.settimeout(None)
+		except:
+			print("[CLIENTE]: Error en la entrega de datos.")
+			generateACK(blockNumber)
+			clientSocket.settimeout(None)
+			data, serverAddress = clientSocket.recvfrom(packetSize*2)
+
 	print("{} DESCARGADO CON ÉXITO.".format(filename))
 	f.close()	
 
 def generatePUT():
 	#DEBUG
-	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
-
 	filename = getFile()
+	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
+	else:		   save_file = filename
+	
 	generateRRQ_WRQ(save_file)
 	if mode == "octet":		f = open(filename,"rb")
 	else:					f = open(filename,"r")
 
 	#Try except para error entrega 4
 	blockNumber = 1
-	data = f.read(packetSize-4)
+	data = f.read(packetSize)
 
 	if len(data) == 0:
 		sendDATA(blockNumber, bytes("", "utf-8"))
@@ -168,13 +180,15 @@ def generatePUT():
 		if opCode == packetType["ACK"]:
 			ACKErr = int.from_bytes(WaitACK[2:], "big")
 			if ACKErr == blockNumber:
-				data = f.read(packetSize-4)
+				data = f.read(packetSize)
 				blockNumber += 1
 				blockNumber = blockNumber%65536
 				#Como siempre empieza en 1
 				#(Al 35 puede llegar, el 36 sería un 1)
 				if blockNumber == 0:
 					blockNumber += 1
+			elif ACKErr != 0:
+				print("[CLIENTE]: ACK INCORRECTO. Se esperaba {}".format(blockNumber))
 		#else no has recibido un ACK -> tenemos un error
 		if mode == "octet":		sendDATA(blockNumber, data)
 		else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
