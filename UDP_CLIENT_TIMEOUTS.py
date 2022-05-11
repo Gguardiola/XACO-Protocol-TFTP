@@ -154,7 +154,6 @@ def generateGET():
 def generatePUT():
 	#DEBUG
 	filename = getFile()
-	timeouttruco = True
 	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
 	else:		   save_file = filename
 	
@@ -193,11 +192,6 @@ def generatePUT():
 			elif ACKErr != 0:
 				print("[CLIENTE]: ACK INCORRECTO. Se esperaba {}".format(blockNumber))
 		#else no has recibido un ACK -> tenemos un error
-		if blockNumber == 4200 and timeouttruco: 
-			print("TIMEOUT TRUCO")
-			time.sleep(10)
-			timeouttruco = False
-
 		if mode == "octet":		sendDATA(blockNumber, data)
 		else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
 
