@@ -36,12 +36,12 @@ timeOut = int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
 mode = serverOptions.get('SERVEROPTIONS', 'mode')
 
 
-def setupServer(serverPort,packetSize):
+def setupServer(serverPort,packetSize,timeOut):
 	print("##############################################")	
 	print("Opciones de configuracion por defecto:")
 	print("- Puerto: {}".format(serverPort))
 	print("- Tamano de paquete: {}".format(packetSize))
-	print("- TimeOut (ms): {}".format(timeOut))
+	print("- TimeOut (ms): {}".format(timeOut/1000))
 	print("")
 	opt = input("Cambiar opciones? (y/n): ")
 	
@@ -61,7 +61,7 @@ def setupServer(serverPort,packetSize):
 		
 	else:
 		print("Usando configuración por defecto.")
-		return serverPort, packetSize
+		return serverPort, packetSize, timeOut
 
 
 def generateACK(blockNumber):
@@ -77,9 +77,10 @@ def generateOACK():
 
 	## OPCODE | blocksize | 0 | data1 | 0 | timeout | 0 | data2 | 0 | ...
 	oackPacket = bytearray();oackPacket.append(0);oackPacket.append(6)
-	oackPacket += bytearray(bytes('blocksize'));oackPacket.append(0)
-	oackPacket += packetSize.to_bytes(2,'big');oackPacket.append(0)
-	oackPacket += bytearray(bytes('timeout'));oackPacket.append(0)
+	oackPacket += bytearray(bytes('blocksize','utf-8'));oackPacket.append(0)
+	auxPacketSize = str(packetSize)
+	oackPacket +=  bytearray(auxPacketSize.encode("utf-8"));oackPacket.append(0)
+	oackPacket += bytearray(bytes('timeout','utf-8'));oackPacket.append(0)
 	oackPacket += timeOut.to_bytes(2,'big');oackPacket.append(0)
 	print("[SERVIDOR]: Enviando OACK")
 	serverSocket.sendto(oackPacket, clientAddress)
@@ -104,7 +105,7 @@ def sendDATA(blockNumber, data):
 	serverSocket.sendto(dataPacket, clientAddress)
 	
 def generateGET(filename):	
-
+	generateOACK()
 	try:
 		if mode == "netascii":		f = open(filename, "r")
 		else:						f = open(filename, "rb")
@@ -156,7 +157,7 @@ def generatePUT(filename):
 
 	blockNumber = 0
 	while True:
-		serverSocket.settimeout(0.00005)
+		serverSocket.settimeout(timeOut/1000)	# 0.00005
 		
 		try:
 			data, serverAddress = serverSocket.recvfrom(packetSize*2)
@@ -205,12 +206,29 @@ while True:
 	#RRQ - WRQ
 	requestType, clientAddress = serverSocket.recvfrom(packetSize*2)
 	print("[SERVIDOR]: CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
+	#opCode
+	print(requestType)
 	opCode = int.from_bytes(requestType[:2],"big")
-	requestType = requestType[2:]
-	requestType = requestType.split(b'\x00') #REVISAR ESTO ES MUY TRYHARD
-	filename = requestType[0]
-	filename = filename.decode()
+	#filename
+	requestType = requestType[2:];requestType = requestType.split(b'\x00')
+	print(requestType)
+	filename = requestType[0];filename = filename.decode()
+	#mode
 	mode = requestType[1].decode()
+	#packetSize
+	bytePacketSize = requestType[3:4];packetSize = int.from_bytes(bytePacketSize,"big")
+	aux = requestType
+	print("new:", aux)
+	print("PS: {}".format(packetSize))
+	print(requestType)
+	print("hola",requestType[:2])
+	#timeOut
+	#requestType = requestType[3:]
+	#print(requestType)
+	#requestType = requestType.split(b'\x00',1)[1]
+	#print(requestType)
+	byteTimeOut = requestType[7];timeOut = int.from_bytes(byteTimeOut[:2],"big")
+	print("TO: {}".format(timeOut))
 
 	if 		opCode == packetType["RRQ"]: 	generateGET(filename) 	#RRQ	
 	elif 	opCode == packetType["WRQ"]:  	generatePUT(filename) 	#WRQ

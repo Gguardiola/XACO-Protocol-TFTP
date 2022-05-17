@@ -1,3 +1,4 @@
+import opcode
 from socket import *                                    
 import os
 import sys
@@ -36,14 +37,16 @@ serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
 opCode = int(serverOptions.get('SERVEROPTIONS', 'opCode'))
 packetSize = int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
 mode = serverOptions.get('SERVEROPTIONS', 'mode')
+timeOut = int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
 
-def setupClient(serverName, serverPort, packetSize, mode):
+def setupClient(serverName, serverPort, packetSize, mode,timeOut):
 	print("##############################################")
 	print("Opciones de configuracion por defecto:")
 	print("Nombre del servidor: {}".format(serverName))
 	print("- Puerto: {}".format(serverPort))
 	print("- Tamano de paquete: {}".format(packetSize))
 	print("- Modo: {}".format(mode))
+	print("- TimeOut (ms): {}".format(timeOut/1000))
 	print("")
 	opt = input("Cambiar opciones? (y/n): ")
 	
@@ -57,15 +60,16 @@ def setupClient(serverName, serverPort, packetSize, mode):
 			if len(str(serverPort)) == 0: serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
 			if len(str(packetSize)) == 0: packetSize =int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
 			if len(str(mode)) == 0: mode = serverOptions.get('SERVEROPTIONS', 'mode')
-			return serverName, serverPort, packetSize, mode
+			if len(str(timeOut)) == 0: timeOut =int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
+			return serverName, serverPort, packetSize, mode, timeOut
 		except Exception as e:
 			print("ERROR - Opciones incorrectas. {}".format(e))
 			serverName = 0
-			return serverName, serverPort, packetSize, mode
+			return serverName, serverPort, packetSize, mode, timeOut
 		
 	else:
 		print("Usando configuración por defecto.")
-		return serverName, serverPort, packetSize, mode
+		return serverName, serverPort, packetSize, mode, timeOut
 
 def generateERR(errCode):
 	## OPCODE | errCode | errMsg | 0 | ...
@@ -95,12 +99,21 @@ def getFile():
 	return filename
 	
 def generateRRQ_WRQ(filename):
-
+	print("[CLIENTE]: Enviando RRQ")
 	#OP CODE
 	xrqPacket = bytearray();xrqPacket.append(0);xrqPacket.append(opCode)
 	#FILENAME | 0 | MODE | 0
-	xrqPacket += bytearray(filename.encode('utf-8'));xrqPacket.append(0);xrqPacket += bytearray(bytes(mode, 'utf-8'));xrqPacket.append(0)
-	
+	xrqPacket += bytearray(filename.encode('utf-8'));xrqPacket.append(0)
+	xrqPacket += bytearray(bytes(mode, 'utf-8'));xrqPacket.append(0)
+	xrqPacket += bytearray(bytes('blocksize', 'utf-8'))
+	print("cliente", packetSize)
+	print("testc", packetSize.to_bytes(2,'big'))
+	print("holaaa", packetSize.to_bytes(2,'little'))
+	xrqPacket.append(0);xrqPacket += packetSize.to_bytes(2,'big')
+	xrqPacket.append(0)
+	xrqPacket += bytearray(bytes('timeout', 'utf-8'));xrqPacket.append(0)
+	print("cliente", timeOut)
+	xrqPacket += timeOut.to_bytes(2,'big');xrqPacket.append(0)
 	clientSocket.sendto(xrqPacket, serverAddress)
 
 def generateACK(blockNumber):
@@ -139,25 +152,52 @@ def generateGET():
 
 
 	data, serverAddress = clientSocket.recvfrom(packetSize*2)
+	opCode = int.from_bytes(data[:2], 'big')
 	while len(data[4:]) > 0:
-		clientSocket.settimeout(0.1000)
+		clientSocket.settimeout(timeOut/1000)	#0.1000
 		try:
-			blockNumber = int.from_bytes(data[2:4], "big")
-			print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
-			newData = data[4:]
-			if mode == "netascii":		f.write(newData.decode("utf-8"))
-			else:						f.write(newData)
+			if opCode == packetType['DATA']:
+				blockNumber = int.from_bytes(data[2:4], "big")
+				print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
+				newData = data[4:]
+				if mode == "netascii":		f.write(newData.decode("utf-8"))
+				else:						f.write(newData)
+
+				
+				generateACK(blockNumber)
+
+				data, serverAddress = clientSocket.recvfrom(packetSize*2)
+				opCode = int.from_bytes(data[:2], 'big')
+				clientSocket.settimeout(None)
+
+			elif opCode == packetType['OACK']:
+				print("[CLIENTE]: Recibe OACK")
+				oldPacketSize = packetSize
+				oldTimeOut = timeOut
+				#blockSize
+				oackPacket = data[2:];oackPacket = oackPacket.split(b'\x00',1)[1]
+				packetSize = int.from_bytes(oackPacket[:2], 'big')
+				#timeOut
+				oackPacket = oackPacket[3:];oackPacket = oackPacket.split(b'\x00',1)[1]
+				timeOut = int.from_bytes(oackPacket[:2], 'big')
+				if oldPacketSize != packetSize or oldTimeOut != timeOut:
+					print("ERROR OACK")
+					pass
+				else:
+					generateACK(0)
+					clientSocket.settimeout(None)
+
+			elif opCode == packetType['ERR']:
+				clientSocket.settimeout(None)
+				pass
 
 			
-			generateACK(blockNumber)
-
-			data, serverAddress = clientSocket.recvfrom(packetSize*2)
-			clientSocket.settimeout(None)
 		except:
 			print("[CLIENTE]: Error en la entrega de datos.")
 			generateACK(blockNumber)
 			clientSocket.settimeout(None)
 			data, serverAddress = clientSocket.recvfrom(packetSize*2)
+			opCode = int.from_bytes(data[:2], 'big')
 
 	print("{} DESCARGADO CON ÉXITO.".format(filename))
 	f.close()	
@@ -215,7 +255,7 @@ def generatePUT():
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 while True:
-	serverName, serverPort, packetSize, mode = setupClient(serverName, serverPort, packetSize, mode)
+	serverName, serverPort, packetSize, mode, timeOut = setupClient(serverName, serverPort, packetSize, mode, timeOut)
 	if serverName != 0:
 		opt = input("Debug mode? (y/n): ")
 		if opt.lower() == "y": DEBUG_MODE = True;print("MODO DEBUG ACTIVADO!")
