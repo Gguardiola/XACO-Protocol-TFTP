@@ -8,7 +8,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP SERVER - GET/PUT      #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v3.0                #####")
+print("#####            v4.0  RELEASE           #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -17,6 +17,8 @@ packetType = {
     'WRQ': 2,
     'DATA': 3,
     'ACK': 4,
+	'ERR': 5,
+	'OACK': 6
 }   
 
 #Server Options
@@ -30,13 +32,16 @@ except FileNotFoundError:
 serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
 opCode = int(serverOptions.get('SERVEROPTIONS', 'opCode'))
 packetSize = int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
+timeOut = int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
 mode = serverOptions.get('SERVEROPTIONS', 'mode')
+
 
 def setupServer(serverPort,packetSize):
 	print("##############################################")	
 	print("Opciones de configuracion por defecto:")
 	print("- Puerto: {}".format(serverPort))
 	print("- Tamano de paquete: {}".format(packetSize))
+	print("- TimeOut (ms): {}".format(timeOut))
 	print("")
 	opt = input("Cambiar opciones? (y/n): ")
 	
@@ -44,13 +49,15 @@ def setupServer(serverPort,packetSize):
 		try:
 			serverPort = int(input("Puerto: "))
 			packetSize = int(input("Tamano de paquete: "))
-			if len(str(serverPort)) == 0: serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'));print("HOLA")
-			if len(str(packetSize)) == 0: packetSize =int(serverOptions.get('SERVEROPTIONS', 'packetSize'));print("HOLA")
-			return serverPort, packetSize
+			timeOut = int(input("TimeOut (ms): "))
+			if len(str(serverPort)) == 0: serverPort =int(serverOptions.get('SERVEROPTIONS', 'serverPort'))
+			if len(str(packetSize)) == 0: packetSize =int(serverOptions.get('SERVEROPTIONS', 'packetSize'))
+			if len(str(timeOut)) == 0: packetSize =int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
+			return serverPort, packetSize, timeOut
 		except Exception as e:
 			print("ERROR - Opciones incorrectas. {}".format(e))
-			serverPort = packetSize = 0
-			return serverPort, packetSize
+			serverPort = packetSize = timeOut = 0
+			return serverPort, packetSize, timeOut
 		
 	else:
 		print("Usando configuración por defecto.")
@@ -65,6 +72,26 @@ def generateACK(blockNumber):
 	ackPacket += blockNumber.to_bytes(2,'big')
 	print("[SERVIDOR]: Enviando ACK {}".format(blockNumber))
 	serverSocket.sendto(ackPacket, clientAddress)
+
+def generateOACK():
+
+	## OPCODE | blocksize | 0 | data1 | 0 | timeout | 0 | data2 | 0 | ...
+	oackPacket = bytearray();oackPacket.append(0);oackPacket.append(6)
+	oackPacket += bytearray(bytes('blocksize'));oackPacket.append(0)
+	oackPacket += packetSize.to_bytes(2,'big');oackPacket.append(0)
+	oackPacket += bytearray(bytes('timeout'));oackPacket.append(0)
+	oackPacket += timeOut.to_bytes(2,'big');oackPacket.append(0)
+	print("[SERVIDOR]: Enviando OACK")
+	serverSocket.sendto(oackPacket, clientAddress)
+
+def generateERR(errCode):
+	## OPCODE | errCode | errMsg | 0 | ...
+	errCode = str(errCode)
+	errPacket = bytearray();errPacket.append(0);errPacket.append(5);errPacket += errCode.to_bytes(2,'big')
+	errPacket += bytearray(bytes(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))));errPacket.append(0)
+	print("[SERVIDOR]: {}".format(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))))
+	print("[SERVIDOR]: Enviando ERR {}".format(errCode))
+	serverSocket.sendto(errPacket, clientAddress)
 
 def sendDATA(blockNumber, data):
 
@@ -112,8 +139,6 @@ def generateGET(filename):
 				else:
 					print("[SERVIDOR]: ACK incorrecto. Se esperaba {}".format(blockNumber))
 					
-				
-
 		print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(filename,clientAddress))
 		serverSocket.sendto(bytes(), clientAddress)
 		f.close()
@@ -161,7 +186,7 @@ def generatePUT(filename):
 # Setup IPv4 UDP socket
 serverSocket = socket(AF_INET, SOCK_DGRAM)
 while True:
-	serverPort, packetSize = setupServer(serverPort,packetSize)
+	serverPort, packetSize, timeOut = setupServer(serverPort,packetSize,timeOut)
 	if serverPort != 0:
 		break
 

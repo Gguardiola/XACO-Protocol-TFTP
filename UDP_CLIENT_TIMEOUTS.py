@@ -8,7 +8,7 @@ print("##############################################")
 print("#####                                    #####")
 print("#####          UDP CLIENT - GET/PUT      #####")
 print("#####          Alex P. y Gabriel         #####")
-print("#####                v3.0                #####")
+print("#####            v4.0  RELEASE           #####")
 print("#####                                    #####")
 print("##############################################")
 
@@ -19,6 +19,8 @@ packetType = {
     'WRQ': 2,
     'DATA': 3,
     'ACK': 4,
+	'ERR': 5,
+	'OACK': 6
 }   
 
 #Server Options
@@ -64,6 +66,15 @@ def setupClient(serverName, serverPort, packetSize, mode):
 	else:
 		print("Usando configuración por defecto.")
 		return serverName, serverPort, packetSize, mode
+
+def generateERR(errCode):
+	## OPCODE | errCode | errMsg | 0 | ...
+	errCode = str(errCode)
+	errPacket = bytearray();errPacket.append(0);errPacket.append(5);errPacket += errCode.to_bytes(2,'big')
+	errPacket += bytearray(bytes(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))));errPacket.append(0)
+	print("[CLIENTE]: {}".format(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))))
+	print("[CLIENTE]: Enviando ERR {}".format(errCode))
+	clientSocket.sendto(errPacket, serverAddress)
 
 def getFile():
 
