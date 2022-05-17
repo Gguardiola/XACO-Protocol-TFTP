@@ -128,9 +128,11 @@ def generatePUT(filename):
 
 	if mode == 'netascii':		f = open(filename,'w') 
 	else:						f = open(filename,'wb')
-	
+
+	blockNumber = 0
 	while True:
-		serverSocket.settimeout(0.2000)
+		serverSocket.settimeout(0.00005)
+		
 		try:
 			data, serverAddress = serverSocket.recvfrom(packetSize*2)
 			serverSocket.settimeout(None)
