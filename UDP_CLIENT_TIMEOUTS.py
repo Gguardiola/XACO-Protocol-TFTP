@@ -97,7 +97,19 @@ def getFile():
 			pass
 
 	return filename
-	
+
+def raiseERR(data):
+	splitErr = data[2:]
+	#Aqui tenemos el mensaje sin el opcode
+	codeErr = splitErr[0:1]
+	codeErr = int(codeErr)
+	#En el codeErr tenemos el 4
+	strErr = splitErr.split(b"\x00")
+	strErr = strErr[0]
+	strErr = strErr[1:].decode("utf-8")
+	#En el strErr tenemos el string del Error
+	print("[CLIENTE]: {}".format(strErr))
+
 def generateRRQ_WRQ(filename):
 	print("[CLIENTE]: Enviando RRQ")
 	#OP CODE
@@ -106,13 +118,9 @@ def generateRRQ_WRQ(filename):
 	xrqPacket += bytearray(filename.encode('utf-8'));xrqPacket.append(0)
 	xrqPacket += bytearray(bytes(mode, 'utf-8'));xrqPacket.append(0)
 	xrqPacket += bytearray(bytes('blocksize', 'utf-8'))
-	print("cliente", packetSize)
-	print("testc", packetSize.to_bytes(2,'big'))
-	print("holaaa", packetSize.to_bytes(2,'little'))
 	xrqPacket.append(0);xrqPacket += packetSize.to_bytes(2,'big')
 	xrqPacket.append(0)
 	xrqPacket += bytearray(bytes('timeout', 'utf-8'));xrqPacket.append(0)
-	print("cliente", timeOut)
 	xrqPacket += timeOut.to_bytes(2,'big');xrqPacket.append(0)
 	clientSocket.sendto(xrqPacket, serverAddress)
 
@@ -140,23 +148,27 @@ def sendDATA(blockNumber, data):
 def generateGET(packetSize):
 	
 	save_file = getFile()
-	generateRRQ_WRQ(save_file)
+	
+
 	#DEBUG
 	if DEBUG_MODE: filename = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
 	else:		filename = save_file
+	if os.path.exists(filename):
+		print("[CLIENTE]: Error: ARCHIVO YA EXISTE")
+		sys.exit()
+
 	if mode == "octet":		f = open(filename, "wb")
 	else:					f = open(filename, "w")
 
-	#Try except para error entrega 4
-	#Primer paquete
-
+	generateRRQ_WRQ(save_file)
 	#Recibe OACK
 	data, serverAddress = clientSocket.recvfrom(512)
-	print(data)
 
+	#if len(data[4:]) == 0:
+	#	f.close()
+	#	return
 	#OPCODE
 	opCode = int.from_bytes(data[:2], 'big')
-	print(opCode)
 
 	while len(data[4:]) > 0:
 		clientSocket.settimeout(timeOut/10)	#0.1000
@@ -178,7 +190,6 @@ def generateGET(packetSize):
 
 			elif opCode == packetType['OACK']:
 				print("[CLIENTE]: Recibe OACK")
-
 				#packetSize
 				bytePacketSize = data.split(b'blocksize')
 				#Split del blocksize
@@ -189,6 +200,9 @@ def generateGET(packetSize):
 					packetSizeServer = int(strSize)
 				except:
 					print("[CLIENTE]: No tenemos el mismo blocksize")
+					f.close()
+					sys.exit()
+
 				print("PS: {}".format(packetSizeServer))
 				
 				#timeOut
@@ -199,9 +213,9 @@ def generateGET(packetSize):
 				print("TO: {}".format(timeOutServer))
 				
 				if packetSize != packetSizeServer or timeOut != timeOutServer:
-					print("ERROR OACK")
-					break
-					#pass
+					print("[CLIENTE]: ERROR OACK")
+					f.close()
+					sys.exit()
 				else:
 					generateACK(0)
 					data, serverAddress = clientSocket.recvfrom(packetSize*2)
@@ -210,16 +224,20 @@ def generateGET(packetSize):
 					clientSocket.settimeout(None)
 
 			elif opCode == packetType['ERR']:
+				raiseERR(data)	
 				clientSocket.settimeout(None)
-				pass
-
-			
-		except:
+				f.close()
+				sys.exit()
+					
+		except TimeoutError:
 			print("[CLIENTE]: Error en la entrega de datos.")
 			generateACK(blockNumber)
 			clientSocket.settimeout(None)
 			data, serverAddress = clientSocket.recvfrom(packetSize*2)
 			opCode = int.from_bytes(data[:2], 'big')
+		#except Exception as e :
+		#	print("HOLA?",e)
+
 
 	print("{} DESCARGADO CON ÉXITO.".format(filename))
 	f.close()	
@@ -231,6 +249,10 @@ def generatePUT():
 	else:		   save_file = filename
 	
 	generateRRQ_WRQ(save_file)
+	#Recibe OACK
+	data, serverAddress = clientSocket.recvfrom(512)
+
+	opCode = int.from_bytes(data[:2], 'big')
 	if mode == "octet":		f = open(filename,"rb")
 	else:					f = open(filename,"r")
 
@@ -244,6 +266,7 @@ def generatePUT():
 
 
 	while True:
+		#HAY QUE CAMBIARLO
 		#Espera al ACK
 		WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
 		print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
@@ -264,9 +287,47 @@ def generatePUT():
 					blockNumber += 1
 			elif ACKErr != 0:
 				print("[CLIENTE]: ACK INCORRECTO. Se esperaba {}".format(blockNumber))
-		#else no has recibido un ACK -> tenemos un error
-		if mode == "octet":		sendDATA(blockNumber, data)
-		else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
+			#else no has recibido un ACK -> tenemos un error
+			if mode == "octet":		sendDATA(blockNumber, data)
+			else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
+			#wait ack 
+			#op code
+		elif opCode == packetType["OACK"]:
+				print("[CLIENTE]: Recibe OACK")
+
+				#packetSize
+				bytePacketSize = data.split(b'blocksize')
+				#Split del blocksize
+				strSize = bytePacketSize[1]	#Post split
+				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
+				#print(strSize)
+				try:
+					packetSizeServer = int(strSize)
+				except:
+					print("[CLIENTE]: No tenemos el mismo blocksize")
+					f.close()
+					sys.exit()
+
+				print("PS: {}".format(packetSizeServer))
+				
+				#timeOut
+				byteTimeOut = data.split(b'timeout')
+				strTimeOut = byteTimeOut[1]	#Post split
+				strTimeOut = strTimeOut[1:2]	#El string con el timeout
+				timeOutServer = int(strTimeOut)
+				print("TO: {}".format(timeOutServer))
+				
+				if packetSize != packetSizeServer or timeOut != timeOutServer:
+					print("[CLIENTE]: ERROR OACK")
+					f.close()
+					sys.exit()
+				else:
+					blockNumber = 1
+					if mode == "octet":		sendDATA(blockNumber, data)
+					else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
+					#Wait ack 1
+					#cambia el opcode
+					clientSocket.settimeout(None)			
 
 	print("[CLIENTE]: Archivo enviado con éxito!")
 	clientSocket.sendto(bytes(), serverAddress)

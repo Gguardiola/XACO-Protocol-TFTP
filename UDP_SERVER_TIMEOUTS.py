@@ -90,9 +90,11 @@ def generateOACK():
 def generateERR(errCode):
 	## OPCODE | errCode | errMsg | 0 | ...
 	errCode = str(errCode)
-	errPacket = bytearray();errPacket.append(0);errPacket.append(5);errPacket += errCode.to_bytes(2,'big')
-	errPacket += bytearray(bytes(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))));errPacket.append(0)
-	print("[SERVIDOR]: {}".format(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode))))
+	errPacket = bytearray();errPacket.append(0);errPacket.append(5)
+	errPacket += bytearray(errCode.encode("utf-8"))
+	errPacket += bytearray(bytes(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode)), "utf-8"))
+	errPacket.append(0)
+	print("[SERVIDOR]: {}".format(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode)), "utf-8"))
 	print("[SERVIDOR]: Enviando ERR {}".format(errCode))
 	serverSocket.sendto(errPacket, clientAddress)
 
@@ -156,12 +158,12 @@ def generateGET(filename):
 
 def generatePUT(filename):
 
-	generateACK(0)
+	generateOACK()
 
 	if mode == 'netascii':		f = open(filename,'w') 
 	else:						f = open(filename,'wb')
 
-	blockNumber = 0
+	blockNumber = 0	#Inicialització
 	while True:
 		serverSocket.settimeout(timeOut/1000)	# 0.00005
 		
@@ -235,7 +237,7 @@ while True:
 	bytesSize = bytePacketSize[1]	#Post split
 	bytesSize = bytesSize[1:3]		#Los dos bytes
 	#!!!!!!!!!!!!!!!!!!!!!!!!!! PACKTSIZE DEL CLIENTE
-	packetSize = int.from_bytes(bytesSize, "big")
+	packetSizeClient = int.from_bytes(bytesSize, "big")
 	print("PS: {}".format(packetSize))
 
 	#timeOut
@@ -243,8 +245,14 @@ while True:
 	print(byteTimeOut)
 	bytesTimeOut = byteTimeOut[1]	#Post split
 	bytesTimeOut = bytesTimeOut[1:3]	#Los dos bytes
-	timeOut = int.from_bytes(bytesTimeOut,"big")
+	timeOutClient = int.from_bytes(bytesTimeOut,"big")
 	print("TO: {}".format(timeOut))
-	
+
+	if packetSize != packetSizeClient or timeOut != timeOutClient:
+		print("ERROR OACK")
+		generateERR(4)
+		#serverSocket.sendto(bytes(), clientAddress)
+		break
+	#else entra a get put
 	if 		opCode == packetType["RRQ"]: 	generateGET(filename) 	#RRQ	
 	elif 	opCode == packetType["WRQ"]:  	generatePUT(filename) 	#WRQ
