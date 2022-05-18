@@ -1,3 +1,4 @@
+from ast import Break
 import time
 from socket import *
 import os
@@ -81,7 +82,8 @@ def generateOACK():
 	auxPacketSize = str(packetSize)
 	oackPacket +=  bytearray(auxPacketSize.encode("utf-8"));oackPacket.append(0)
 	oackPacket += bytearray(bytes('timeout','utf-8'));oackPacket.append(0)
-	oackPacket += timeOut.to_bytes(2,'big');oackPacket.append(0)
+	auxTimeOut = str(timeOut)
+	oackPacket += bytearray(auxTimeOut.encode("utf-8"));oackPacket.append(0)
 	print("[SERVIDOR]: Enviando OACK")
 	serverSocket.sendto(oackPacket, clientAddress)
 
@@ -115,31 +117,35 @@ def generateGET(filename):
 
 		if len(data) == 0:
 			sendDATA(blockNumber, bytes("", "utf-8"))	
-			waitACK, clientAddress = serverSocket.recvfrom(packetSize*2)
+			WaitACK, clientAddress = serverSocket.recvfrom(packetSize*2)
 
-		while len(data) > 0:
-			#ENVIA DATA
-			if mode == 'netascii':		sendDATA(blockNumber, bytes(data,encoding='utf-8'))
-			else:						sendDATA(blockNumber, data)		
-
-			#ESPERA ACK
-			waitACK, clientAddress = serverSocket.recvfrom(packetSize*2)
-			opCode = int.from_bytes(waitACK[:2],"big")
+		while True:
+			
+			#Espera al ACK
+			WaitACK, clientAddress = serverSocket.recvfrom(packetSize*2)
+			print("[SERVIDOR]: Recibe ACK {}".format((WaitACK[2]<<8) + WaitACK[3]))
+			opCode = int.from_bytes(WaitACK[:2], "big")
 
 			if opCode == packetType["ACK"]:
-				blockNumberACK = int.from_bytes(waitACK[2:],"big")
-				print("[SERVIDOR]: Recibe ACK {}".format(blockNumberACK))
-
+				blockNumberACK = int.from_bytes(WaitACK[2:], "big")
+				#print("[SERVIDOR]: Recibe ACK {}".format(blockNumberACK))
 				if blockNumberACK == blockNumber:
-
 					data = f.read(packetSize)
 					blockNumber += 1
 					blockNumber = blockNumber%65536
-
-					if blockNumber == 0: blockNumber +=1
-				else:
+					#Como siempre empieza en 1
+					#(Al ..35 puede llegar, el ..36 sería un 1)
+					if blockNumber == 0:
+						blockNumber += 1
+				elif blockNumberACK != 0:
 					print("[SERVIDOR]: ACK incorrecto. Se esperaba {}".format(blockNumber))
-					
+			
+			if len(data) == 0:
+				break
+			#ENVIA DATA
+			if mode == 'netascii':		sendDATA(blockNumber, bytes(data,encoding='utf-8'))
+			else:						sendDATA(blockNumber, data)		
+	
 		print("[SERVIDOR]: {} ENVIADO CON EXITO A {}".format(filename,clientAddress))
 		serverSocket.sendto(bytes(), clientAddress)
 		f.close()
@@ -206,29 +212,39 @@ while True:
 	#RRQ - WRQ
 	requestType, clientAddress = serverSocket.recvfrom(packetSize*2)
 	print("[SERVIDOR]: CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
+	
 	#opCode
 	print(requestType)
 	opCode = int.from_bytes(requestType[:2],"big")
+	
 	#filename
-	requestType = requestType[2:];requestType = requestType.split(b'\x00')
-	print(requestType)
-	filename = requestType[0];filename = filename.decode()
-	#mode
-	mode = requestType[1].decode()
-	#packetSize
-	bytePacketSize = requestType[3:4];packetSize = int.from_bytes(bytePacketSize,"big")
-	aux = requestType
-	print("new:", aux)
-	print("PS: {}".format(packetSize))
-	print(requestType)
-	print("hola",requestType[:2])
-	#timeOut
-	#requestType = requestType[3:]
-	#print(requestType)
-	#requestType = requestType.split(b'\x00',1)[1]
-	#print(requestType)
-	byteTimeOut = requestType[7];timeOut = int.from_bytes(byteTimeOut[:2],"big")
-	print("TO: {}".format(timeOut))
+	splittedType = requestType.split(b'\x00')	#Para coger los strings
+	print(splittedType)
+	filename = splittedType[1].decode()
+	filename = filename[1:]
+	print(filename)
 
+	#mode
+	mode = splittedType[2].decode()
+	print(mode)
+
+	#packetSize
+	bytePacketSize = requestType.split(b'blocksize')
+	#Split del blocksize
+	print(bytePacketSize)
+	bytesSize = bytePacketSize[1]	#Post split
+	bytesSize = bytesSize[1:3]		#Los dos bytes
+	#!!!!!!!!!!!!!!!!!!!!!!!!!! PACKTSIZE DEL CLIENTE
+	packetSize = int.from_bytes(bytesSize, "big")
+	print("PS: {}".format(packetSize))
+
+	#timeOut
+	byteTimeOut = requestType.split(b'timeout')
+	print(byteTimeOut)
+	bytesTimeOut = byteTimeOut[1]	#Post split
+	bytesTimeOut = bytesTimeOut[1:3]	#Los dos bytes
+	timeOut = int.from_bytes(bytesTimeOut,"big")
+	print("TO: {}".format(timeOut))
+	
 	if 		opCode == packetType["RRQ"]: 	generateGET(filename) 	#RRQ	
 	elif 	opCode == packetType["WRQ"]:  	generatePUT(filename) 	#WRQ

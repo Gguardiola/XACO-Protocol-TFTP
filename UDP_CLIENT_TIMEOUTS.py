@@ -137,7 +137,7 @@ def sendDATA(blockNumber, data):
 	clientSocket.sendto(dataPacket, serverAddress)
 	#Try except para error entrega 4
 
-def generateGET():
+def generateGET(packetSize):
 	
 	save_file = getFile()
 	generateRRQ_WRQ(save_file)
@@ -150,11 +150,16 @@ def generateGET():
 	#Try except para error entrega 4
 	#Primer paquete
 
+	#Recibe OACK
+	data, serverAddress = clientSocket.recvfrom(512)
+	print(data)
 
-	data, serverAddress = clientSocket.recvfrom(packetSize*2)
+	#OPCODE
 	opCode = int.from_bytes(data[:2], 'big')
+	print(opCode)
+
 	while len(data[4:]) > 0:
-		clientSocket.settimeout(timeOut/1000)	#0.1000
+		clientSocket.settimeout(timeOut/10)	#0.1000
 		try:
 			if opCode == packetType['DATA']:
 				blockNumber = int.from_bytes(data[2:4], "big")
@@ -167,24 +172,41 @@ def generateGET():
 				generateACK(blockNumber)
 
 				data, serverAddress = clientSocket.recvfrom(packetSize*2)
+				#print(len(data[4:]))
 				opCode = int.from_bytes(data[:2], 'big')
 				clientSocket.settimeout(None)
 
 			elif opCode == packetType['OACK']:
 				print("[CLIENTE]: Recibe OACK")
-				oldPacketSize = packetSize
-				oldTimeOut = timeOut
-				#blockSize
-				oackPacket = data[2:];oackPacket = oackPacket.split(b'\x00',1)[1]
-				packetSize = int.from_bytes(oackPacket[:2], 'big')
+
+				#packetSize
+				bytePacketSize = data.split(b'blocksize')
+				#Split del blocksize
+				strSize = bytePacketSize[1]	#Post split
+				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
+				#print(strSize)
+				try:
+					packetSizeServer = int(strSize)
+				except:
+					print("[CLIENTE]: No tenemos el mismo blocksize")
+				print("PS: {}".format(packetSizeServer))
+				
 				#timeOut
-				oackPacket = oackPacket[3:];oackPacket = oackPacket.split(b'\x00',1)[1]
-				timeOut = int.from_bytes(oackPacket[:2], 'big')
-				if oldPacketSize != packetSize or oldTimeOut != timeOut:
+				byteTimeOut = data.split(b'timeout')
+				strTimeOut = byteTimeOut[1]	#Post split
+				strTimeOut = strTimeOut[1:2]	#El string con el timeout
+				timeOutServer = int(strTimeOut)
+				print("TO: {}".format(timeOutServer))
+				
+				if packetSize != packetSizeServer or timeOut != timeOutServer:
 					print("ERROR OACK")
-					pass
+					break
+					#pass
 				else:
 					generateACK(0)
+					data, serverAddress = clientSocket.recvfrom(packetSize*2)
+					#print(len(data[4:]))
+					opCode = int.from_bytes(data[:2], 'big')
 					clientSocket.settimeout(None)
 
 			elif opCode == packetType['ERR']:
@@ -277,5 +299,5 @@ if method.lower() == "put":
 	generatePUT()
 elif method.lower() == "get":
 	opCode = packetType['RRQ']	#2
-	generateGET()
+	generateGET(packetSize)
 
