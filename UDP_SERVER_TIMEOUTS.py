@@ -153,8 +153,8 @@ def generateGET(filename):
 		f.close()
 			
 	except FileNotFoundError:
-		print("[SERVIDOR]: No se encuentra el fichero en el servidor!.")
-		return 0 #PONER USAGE
+		generateERR(1)
+		sys.exit()
 
 def generatePUT(filename):
 
@@ -180,7 +180,7 @@ def generatePUT(filename):
 			else:						f.write(newData)
 
 			generateACK(blockNumber)
-		except:
+		except TimeoutError:
 			print("[SERVIDOR]: Error en la entrega de datos.")
 			generateACK(blockNumber)
 			serverSocket.settimeout(None)

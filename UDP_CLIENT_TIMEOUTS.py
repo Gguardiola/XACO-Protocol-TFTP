@@ -90,13 +90,13 @@ def getFile():
 			msgLength = filename.split(" ")
 			if len(msgLength) > 1:
 				print("ERROR - INTRODUCE SOLO UN ARCHIVO.")
-			else:
-				break
-		if opCode == packetType['WRQ']:	
-			#comprobar si el archivo existe
-			pass
-
-	return filename
+		#if opcode
+		#		if opCode == packetType['WRQ']:	
+		#
+		#	if not os.path.exists(filename):
+		#		print("[CLIENTE]: ERROR - EL ARCHIVO NO EXISTE.")
+		#		return -1
+		return filename
 
 def raiseERR(data):
 	splitErr = data[2:]
@@ -145,22 +145,22 @@ def sendDATA(blockNumber, data):
 	clientSocket.sendto(dataPacket, serverAddress)
 	#Try except para error entrega 4
 
-def generateGET(packetSize):
+def generateGET():
 	
-	save_file = getFile()
+	filename = getFile()
 	
 
 	#DEBUG
-	if DEBUG_MODE: filename = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
-	else:		filename = save_file
-	if os.path.exists(filename):
+	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
+	else:		save_file = filename
+	if os.path.exists(save_file):
 		print("[CLIENTE]: Error: ARCHIVO YA EXISTE")
 		sys.exit()
 
-	if mode == "octet":		f = open(filename, "wb")
-	else:					f = open(filename, "w")
+	if mode == "octet":		f = open(save_file, "wb")
+	else:					f = open(save_file, "w")
 
-	generateRRQ_WRQ(save_file)
+	generateRRQ_WRQ(filename)
 	#Recibe OACK
 	data, serverAddress = clientSocket.recvfrom(512)
 
@@ -235,16 +235,16 @@ def generateGET(packetSize):
 			clientSocket.settimeout(None)
 			data, serverAddress = clientSocket.recvfrom(packetSize*2)
 			opCode = int.from_bytes(data[:2], 'big')
-		#except Exception as e :
-		#	print("HOLA?",e)
 
-
-	print("{} DESCARGADO CON ÉXITO.".format(filename))
+	print("[CLIENTE]: {} DESCARGADO CON ÉXITO.".format(save_file))
 	f.close()	
 
 def generatePUT():
 	#DEBUG
 	filename = getFile()
+	while filename == -1:
+		filename = getFile()
+		
 	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
 	else:		   save_file = filename
 	
@@ -257,7 +257,7 @@ def generatePUT():
 	else:					f = open(filename,"r")
 	#Try except para error entrega 4
 	blockNumber = 1
-
+	
 	#if len(WaitACK) == 0:
 	#	sendDATA(blockNumber, bytes("", "utf-8"))
 	#	WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
@@ -331,7 +331,7 @@ def generatePUT():
 				clientSocket.settimeout(None)
 				f.close()
 				sys.exit()
-	print("[CLIENTE]: Archivo enviado con éxito!")
+	print("[CLIENTE]: {} ENVIADO CON EXITO A {}".format(filename,serverAddress))
 	clientSocket.sendto(bytes(), serverAddress)
 	f.close()
 
@@ -362,5 +362,5 @@ if method.lower() == "put":
 	generatePUT()
 elif method.lower() == "get":
 	opCode = packetType['RRQ']	#2
-	generateGET(packetSize)
+	generateGET()
 
