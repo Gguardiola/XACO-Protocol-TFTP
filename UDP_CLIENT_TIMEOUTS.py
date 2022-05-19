@@ -250,34 +250,26 @@ def generatePUT():
 	
 	generateRRQ_WRQ(save_file)
 	#Recibe OACK
-	data, serverAddress = clientSocket.recvfrom(512)
+	WaitACK, serverAddress = clientSocket.recvfrom(512)
+	opCode = int.from_bytes(WaitACK[:2], 'big')
 
-	opCode = int.from_bytes(data[:2], 'big')
 	if mode == "octet":		f = open(filename,"rb")
 	else:					f = open(filename,"r")
-
 	#Try except para error entrega 4
 	blockNumber = 1
-	data = f.read(packetSize)
 
-	if len(data) == 0:
-		sendDATA(blockNumber, bytes("", "utf-8"))
-		WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
+	#if len(WaitACK) == 0:
+	#	sendDATA(blockNumber, bytes("", "utf-8"))
+	#	WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
 
 
 	while True:
 		#HAY QUE CAMBIARLO
-		#Espera al ACK
-		WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
-		print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
-		opCode = int.from_bytes(WaitACK[:2], "big")
-
-		if len(data) == 0:
-			break
-
 		if opCode == packetType["ACK"]:
 			ACKErr = int.from_bytes(WaitACK[2:], "big")
 			if ACKErr == blockNumber:
+				if len(data) == 0:
+					break
 				data = f.read(packetSize)
 				blockNumber += 1
 				blockNumber = blockNumber%65536
@@ -290,17 +282,20 @@ def generatePUT():
 			#else no has recibido un ACK -> tenemos un error
 			if mode == "octet":		sendDATA(blockNumber, data)
 			else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
-			#wait ack 
-			#op code
+			#Espera al ACK
+			WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
+			print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
+			opCode = int.from_bytes(WaitACK[:2], "big")
 		elif opCode == packetType["OACK"]:
 				print("[CLIENTE]: Recibe OACK")
 
 				#packetSize
-				bytePacketSize = data.split(b'blocksize')
+				bytePacketSize = WaitACK.split(b'blocksize')
+				print(bytePacketSize)
 				#Split del blocksize
 				strSize = bytePacketSize[1]	#Post split
 				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
-				#print(strSize)
+				print(strSize)
 				try:
 					packetSizeServer = int(strSize)
 				except:
@@ -311,7 +306,7 @@ def generatePUT():
 				print("PS: {}".format(packetSizeServer))
 				
 				#timeOut
-				byteTimeOut = data.split(b'timeout')
+				byteTimeOut = WaitACK.split(b'timeout')
 				strTimeOut = byteTimeOut[1]	#Post split
 				strTimeOut = strTimeOut[1:2]	#El string con el timeout
 				timeOutServer = int(strTimeOut)
@@ -323,12 +318,19 @@ def generatePUT():
 					sys.exit()
 				else:
 					blockNumber = 1
+					data = f.read(packetSize)
 					if mode == "octet":		sendDATA(blockNumber, data)
 					else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
-					#Wait ack 1
-					#cambia el opcode
+					#Espera al ACK
+					WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
+					print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
+					opCode = int.from_bytes(WaitACK[:2], "big")
 					clientSocket.settimeout(None)			
-
+		elif opCode == packetType['ERR']:
+				raiseERR(WaitACK)	
+				clientSocket.settimeout(None)
+				f.close()
+				sys.exit()
 	print("[CLIENTE]: Archivo enviado con éxito!")
 	clientSocket.sendto(bytes(), serverAddress)
 	f.close()

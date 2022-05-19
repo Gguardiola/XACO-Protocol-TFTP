@@ -216,42 +216,40 @@ while True:
 	print("[SERVIDOR]: CONEXIÓN ESTABLECIDA - Client IP {}".format(clientAddress))
 	
 	#opCode
-	print(requestType)
 	opCode = int.from_bytes(requestType[:2],"big")
 	
 	#filename
 	splittedType = requestType.split(b'\x00')	#Para coger los strings
-	print(splittedType)
+	#print(splittedType)					#Para ver como están spliteados los strings
 	filename = splittedType[1].decode()
 	filename = filename[1:]
-	print(filename)
+	#print(filename)						#para ver el nombre del archivo
 
 	#mode
 	mode = splittedType[2].decode()
-	print(mode)
+	#print(mode)							#para ver cual es el modo
 
 	#packetSize
 	bytePacketSize = requestType.split(b'blocksize')
 	#Split del blocksize
-	print(bytePacketSize)
+	#print(bytePacketSize)				#para ver como se divide con la palabra blocksize
 	bytesSize = bytePacketSize[1]	#Post split
 	bytesSize = bytesSize[1:3]		#Los dos bytes
-	#!!!!!!!!!!!!!!!!!!!!!!!!!! PACKTSIZE DEL CLIENTE
 	packetSizeClient = int.from_bytes(bytesSize, "big")
-	print("PS: {}".format(packetSize))
+	#print("PS: {}".format(packetSize))	#para ver cuánto da el packet size
 
 	#timeOut
 	byteTimeOut = requestType.split(b'timeout')
-	print(byteTimeOut)
+	#Split del timeout
+	#print(byteTimeOut)					#para ver como se divide con la palabra timeout
 	bytesTimeOut = byteTimeOut[1]	#Post split
 	bytesTimeOut = bytesTimeOut[1:3]	#Los dos bytes
 	timeOutClient = int.from_bytes(bytesTimeOut,"big")
-	print("TO: {}".format(timeOut))
+	#print("TO: {}".format(timeOut))	#para ver cuánto da el time out
 
 	if packetSize != packetSizeClient or timeOut != timeOutClient:
-		print("ERROR OACK")
+		print("[SERVIDOR]: Error en el negocio de datos")
 		generateERR(4)
-		#serverSocket.sendto(bytes(), clientAddress)
 		break
 	#else entra a get put
 	if 		opCode == packetType["RRQ"]: 	generateGET(filename) 	#RRQ	
