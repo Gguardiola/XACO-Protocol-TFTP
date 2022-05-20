@@ -90,13 +90,18 @@ def getFile():
 			msgLength = filename.split(" ")
 			if len(msgLength) > 1:
 				print("ERROR - INTRODUCE SOLO UN ARCHIVO.")
-		#if opcode
-		#		if opCode == packetType['WRQ']:	
-		#
-		#	if not os.path.exists(filename):
-		#		print("[CLIENTE]: ERROR - EL ARCHIVO NO EXISTE.")
-		#		return -1
+
+		if opCode == packetType['WRQ']:	
+
+			if not os.path.exists(filename):
+				print("[CLIENTE]: ERROR - EL ARCHIVO NO EXISTE.")
+				return -1
+		
 		return filename
+def createDir(save_file):
+	path = save_file.split("/");path = path[:-1];path = path[0]
+	os.makedirs(path)
+	print("[CLIENTE]: Creando directorio {}".format(path))
 
 def raiseERR(data):
 	splitErr = data[2:]
@@ -157,16 +162,23 @@ def generateGET():
 		print("[CLIENTE]: Error: ARCHIVO YA EXISTE")
 		sys.exit()
 
-	if mode == "octet":		f = open(save_file, "wb")
-	else:					f = open(save_file, "w")
+	if mode == "octet":
+		#si save_file tiene "/", es directorio, entonces lo crea		
+		if "/" in save_file and not os.path.exists(save_file):
+			createDir(save_file)
+
+		f = open(save_file, "wb")
+
+	else:
+		#si save_file tiene "/", es directorio, entonces lo crea		
+		if "/" in save_file and not os.path.exists(save_file):
+			createDir(save_file)
+		
+		f = open(save_file, "w")
 
 	generateRRQ_WRQ(filename)
 	#Recibe OACK
 	data, serverAddress = clientSocket.recvfrom(512)
-
-	#if len(data[4:]) == 0:
-	#	f.close()
-	#	return
 	#OPCODE
 	opCode = int.from_bytes(data[:2], 'big')
 
@@ -177,9 +189,13 @@ def generateGET():
 				blockNumber = int.from_bytes(data[2:4], "big")
 				print("[CLIENTE]: Recibe DATA {}".format(blockNumber))
 				newData = data[4:]
-				if mode == "netascii":		f.write(newData.decode("utf-8"))
-				else:						f.write(newData)
-
+				try:
+					if mode == "netascii":		f.write(newData.decode("utf-8"))
+					else:						f.write(newData)
+				except OSError as e:
+					if e.errno == 28:
+						print("[CLIENTE]: Error: DISCO LLENO O EXCESO DE CAPACIDAD")
+						return -1
 				
 				generateACK(blockNumber)
 
@@ -203,14 +219,14 @@ def generateGET():
 					f.close()
 					sys.exit()
 
-				print("PS: {}".format(packetSizeServer))
+				#print("PS: {}".format(packetSizeServer))
 				
 				#timeOut
 				byteTimeOut = data.split(b'timeout')
 				strTimeOut = byteTimeOut[1]	#Post split
 				strTimeOut = strTimeOut[1:2]	#El string con el timeout
 				timeOutServer = int(strTimeOut)
-				print("TO: {}".format(timeOutServer))
+				#print("TO: {}".format(timeOutServer))
 				
 				if packetSize != packetSizeServer or timeOut != timeOutServer:
 					print("[CLIENTE]: ERROR OACK")
@@ -291,11 +307,11 @@ def generatePUT():
 
 				#packetSize
 				bytePacketSize = WaitACK.split(b'blocksize')
-				print(bytePacketSize)
+				#print(bytePacketSize)
 				#Split del blocksize
 				strSize = bytePacketSize[1]	#Post split
 				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
-				print(strSize)
+				#print(strSize)
 				try:
 					packetSizeServer = int(strSize)
 				except:
@@ -303,14 +319,14 @@ def generatePUT():
 					f.close()
 					sys.exit()
 
-				print("PS: {}".format(packetSizeServer))
+				#print("PS: {}".format(packetSizeServer))
 				
 				#timeOut
 				byteTimeOut = WaitACK.split(b'timeout')
 				strTimeOut = byteTimeOut[1]	#Post split
 				strTimeOut = strTimeOut[1:2]	#El string con el timeout
 				timeOutServer = int(strTimeOut)
-				print("TO: {}".format(timeOutServer))
+				#print("TO: {}".format(timeOutServer))
 				
 				if packetSize != packetSizeServer or timeOut != timeOutServer:
 					print("[CLIENTE]: ERROR OACK")
@@ -323,8 +339,10 @@ def generatePUT():
 					else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
 					#Espera al ACK
 					WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
-					print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
 					opCode = int.from_bytes(WaitACK[:2], "big")
+					if opCode == packetType['ACK']:
+						print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
+					#else ha entrado un ERROR en vez de ACK
 					clientSocket.settimeout(None)			
 		elif opCode == packetType['ERR']:
 				raiseERR(WaitACK)	

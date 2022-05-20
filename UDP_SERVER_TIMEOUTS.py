@@ -64,6 +64,19 @@ def setupServer(serverPort,packetSize,timeOut):
 		print("Usando configuración por defecto.")
 		return serverPort, packetSize, timeOut
 
+def createDir(filename):
+	try:
+		path = filename.split("/");path = path[:-1];path = path[0]
+		os.makedirs(path)
+	except PermissionError as e:
+		print(e)
+		generateERR(2)
+		sys.exit()
+	except Exception as e:
+		generateERR(0,str(e))
+		sys.exit()
+		
+	print("[SERVIDOR]: Creando directorio {}".format(path))
 
 def generateACK(blockNumber):
 
@@ -95,6 +108,18 @@ def generateERR(errCode):
 	errPacket += bytearray(bytes(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode)), "utf-8"))
 	errPacket.append(0)
 	print("[SERVIDOR]: {}".format(serverOptions.get('ERROR_PROMPT', '{}'.format(errCode)), "utf-8"))
+	print("[SERVIDOR]: Enviando ERR {}".format(errCode))
+	serverSocket.sendto(errPacket, clientAddress)
+
+#sobrecarga funcion generateERR
+def generateERR_undefined(errCode, errMsg):
+	## OPCODE | errCode | errMsg | 0 | ...
+	errCode = str(errCode)
+	errPacket = bytearray();errPacket.append(0);errPacket.append(5)
+	errPacket += bytearray(errCode.encode("utf-8"))
+	errPacket += bytearray(errMsg.encode("utf-8"))
+	errPacket.append(0)
+	print("[SERVIDOR]: {}".format(errMsg))
 	print("[SERVIDOR]: Enviando ERR {}".format(errCode))
 	serverSocket.sendto(errPacket, clientAddress)
 
@@ -154,16 +179,41 @@ def generateGET(filename):
 			
 	except FileNotFoundError:
 		generateERR(1)
+	except Exception as e:
+		generateERR_undefined(0,str(e))
+	finally:
+		f.close()
 		sys.exit()
 
 def generatePUT(filename):
 
 	generateOACK()
+	try:
+		if mode == 'netascii':		
+			if "/" in filename and not os.path.exists(filename):
+				createDir(filename)
+			elif os.path.exists(filename): 
+				generateERR(6)
+				sys.exit()
 
-	if mode == 'netascii':		f = open(filename,'w') 
-	else:						f = open(filename,'wb')
+			f = open(filename,'w') 
+		else:
+			if "/" in filename and not os.path.exists(filename):
+				createDir(filename)
+			elif os.path.exists(filename): 
+				generateERR(6)
+				sys.exit()
 
-	blockNumber = 0	#Inicialització
+			f = open(filename,'wb')
+	except PermissionError:
+		generateERR(2)
+		sys.exit()
+	except Exception as e:
+		generateERR_undefined(0,str(e))
+		sys.exit()
+
+
+	blockNumber = 0
 	while True:
 		serverSocket.settimeout(timeOut/1000)	# 0.00005
 		
@@ -175,16 +225,27 @@ def generatePUT(filename):
 			blockNumber = int.from_bytes(data[2:4], "big")
 			print("[SERVIDOR]: Recibe DATA {}".format(blockNumber))
 			newData = data[4:]
+			try:
+				if mode == "netascii":		f.write(newData.decode("utf-8"))
+				else:						f.write(newData)
+			except OSError as e:
+					if e.errno == 28: generateERR(3)
+					else:		      generateERR(0)
+					sys.exit()
 
-			if mode == "netascii":		f.write(newData.decode("utf-8"))
-			else:						f.write(newData)
-
+			except Exception as e:
+				generateERR_undefined(0,str(e))
+				sys.exit()			
+						
 			generateACK(blockNumber)
 		except TimeoutError:
 			print("[SERVIDOR]: Error en la entrega de datos.")
 			generateACK(blockNumber)
 			serverSocket.settimeout(None)
 			data, serverAddress = serverSocket.recvfrom(packetSize*2)
+		except Exception as e:
+			generateERR_undefined(0,str(e))
+			sys.exit()			
 			
 	print("[SERVIDOR]: ARCHIVO DESCARGADOR CON EXITO!")
 	f.close() 
@@ -205,7 +266,7 @@ try:
 except OSError:
 	serverPort += 1
 	serverSocket.bind(('', serverPort))
-	print("[SERVIDOR]: Puerto en uso. Cambiando al {}".format(serverPort))
+	print("[SERVIDOR]: Puerto en uso. Cambiando al {}".format(serverPort))	
 
 
 while True:
@@ -254,3 +315,5 @@ while True:
 	#else entra a get put
 	if 		opCode == packetType["RRQ"]: 	generateGET(filename) 	#RRQ	
 	elif 	opCode == packetType["WRQ"]:  	generatePUT(filename) 	#WRQ
+	else:
+		generateERR(5)
