@@ -245,8 +245,8 @@ def generateGET():
 				f.close()
 				sys.exit()
 					
-		except TimeoutError:
-			print("[CLIENTE]: Error en la entrega de datos.")
+		except timeout as e:
+			print("[CLIENTE]: Error en la entrega de datos. TIME OUT.")
 			generateACK(blockNumber)
 			clientSocket.settimeout(None)
 			data, serverAddress = clientSocket.recvfrom(packetSize*2)

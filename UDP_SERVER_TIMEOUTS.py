@@ -1,4 +1,5 @@
 from ast import Break
+from ctypes import WinError
 import time
 from socket import *
 import os
@@ -67,13 +68,12 @@ def setupServer(serverPort,packetSize,timeOut):
 def createDir(filename):
 	try:
 		path = filename.split("/");path = path[:-1];path = path[0]
-		os.makedirs(path)
+		if not os.path.exists(path): os.makedirs(path)
 	except PermissionError as e:
-		print(e)
 		generateERR(2)
 		sys.exit()
 	except Exception as e:
-		generateERR(0,str(e))
+		generateERR_undefined(0,str(e))
 		sys.exit()
 		
 	print("[SERVIDOR]: Creando directorio {}".format(path))
@@ -230,7 +230,7 @@ def generatePUT(filename):
 				else:						f.write(newData)
 			except OSError as e:
 					if e.errno == 28: generateERR(3)
-					else:		      generateERR(0)
+					else:		      generateERR_undefined(0,str(e))
 					sys.exit()
 
 			except Exception as e:
@@ -238,8 +238,8 @@ def generatePUT(filename):
 				sys.exit()			
 						
 			generateACK(blockNumber)
-		except TimeoutError:
-			print("[SERVIDOR]: Error en la entrega de datos.")
+		except timeout:
+			print("[SERVIDOR]: Error en la entrega de datos. TIME OUT.")
 			generateACK(blockNumber)
 			serverSocket.settimeout(None)
 			data, serverAddress = serverSocket.recvfrom(packetSize*2)
