@@ -39,13 +39,15 @@ mode = serverOptions.get('SERVEROPTIONS', 'mode')
 
 
 def setupServer(serverPort,packetSize,timeOut):
-	print("##############################################")	
-	print("Opciones de configuracion por defecto:")
+	print("\n")
+	print("====================================")
+	print("CONFIGURACION POR DEFECTO:")
+	print("====================================",end="\n")
 	print("- Puerto: {}".format(serverPort))
 	print("- Tamano de paquete: {}".format(packetSize))
 	print("- TimeOut (ms): {}".format(timeOut/1000))
-	print("")
-	opt = input("Cambiar opciones? (y/n): ")
+	print("====================================",end="\n")
+	opt = input("CAMBIAR CONFIGURACION?(y/n): ")
 	
 	if opt.lower() == 'y':
 		try:
@@ -62,12 +64,12 @@ def setupServer(serverPort,packetSize,timeOut):
 			return serverPort, packetSize, timeOut
 		
 	else:
-		print("Usando configuración por defecto.")
+		print("[CLIENTE]: USANDO LA CONFIGURACION POR DEFECTO!!!")
 		return serverPort, packetSize, timeOut
 
 def createDir(filename):
 	try:
-		path = filename.split("/");path = path[:-1];path = path[0]
+		path = filename.split("/");path = path[:-1];path = "/".join(path)
 		if not os.path.exists(path): os.makedirs(path)
 	except PermissionError as e:
 		generateERR(2)
@@ -89,9 +91,9 @@ def generateACK(blockNumber):
 
 def generateOACK():
 
-	## OPCODE | blocksize | 0 | data1 | 0 | timeout | 0 | data2 | 0 | ...
+	## OPCODE | blksize | 0 | data1 | 0 | timeout | 0 | data2 | 0 | ...
 	oackPacket = bytearray();oackPacket.append(0);oackPacket.append(6)
-	oackPacket += bytearray(bytes('blocksize','utf-8'));oackPacket.append(0)
+	oackPacket += bytearray(bytes('blksize','utf-8'));oackPacket.append(0)
 	auxPacketSize = str(packetSize)
 	oackPacket +=  bytearray(auxPacketSize.encode("utf-8"));oackPacket.append(0)
 	oackPacket += bytearray(bytes('timeout','utf-8'));oackPacket.append(0)
@@ -179,9 +181,9 @@ def generateGET(filename):
 			
 	except FileNotFoundError:
 		generateERR(1)
+		sys.exit()
 	except Exception as e:
 		generateERR_undefined(0,str(e))
-	finally:
 		f.close()
 		sys.exit()
 
@@ -247,7 +249,7 @@ def generatePUT(filename):
 			generateERR_undefined(0,str(e))
 			sys.exit()			
 			
-	print("[SERVIDOR]: ARCHIVO DESCARGADOR CON EXITO!")
+	print("[SERVIDOR]: {} DESCARGADO CON EXITO!".format(filename))
 	f.close() 
 
 
@@ -291,9 +293,9 @@ while True:
 	#print(mode)							#para ver cual es el modo
 
 	#packetSize
-	bytePacketSize = requestType.split(b'blocksize')
-	#Split del blocksize
-	#print(bytePacketSize)				#para ver como se divide con la palabra blocksize
+	bytePacketSize = requestType.split(b'blksize')
+	#Split del blksize
+	#print(bytePacketSize)				#para ver como se divide con la palabra blksize
 	bytesSize = bytePacketSize[1]	#Post split
 	bytesSize = bytesSize[1:3]		#Los dos bytes
 	packetSizeClient = int.from_bytes(bytesSize, "big")

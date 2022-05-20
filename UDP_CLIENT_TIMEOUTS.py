@@ -13,8 +13,6 @@ print("#####            v4.0  RELEASE           #####")
 print("#####                                    #####")
 print("##############################################")
 
-DEBUG_MODE = False
-
 packetType = {
     'RRQ': 1,
     'WRQ': 2,
@@ -40,15 +38,17 @@ mode = serverOptions.get('SERVEROPTIONS', 'mode')
 timeOut = int(serverOptions.get('SERVEROPTIONS', 'timeOut'))
 
 def setupClient(serverName, serverPort, packetSize, mode,timeOut):
-	print("##############################################")
-	print("Opciones de configuracion por defecto:")
-	print("Nombre del servidor: {}".format(serverName))
+	print("\n")
+	print("====================================")
+	print("CONFIGURACION POR DEFECTO:")
+	print("====================================",end="\n")
+	print("- Nombre del servidor: {}".format(serverName))
 	print("- Puerto: {}".format(serverPort))
 	print("- Tamano de paquete: {}".format(packetSize))
 	print("- Modo: {}".format(mode))
 	print("- TimeOut (ms): {}".format(timeOut/1000))
-	print("")
-	opt = input("Cambiar opciones? (y/n): ")
+	print("====================================",end="\n")
+	opt = input("CAMBIAR CONFIGURACION?(y/n): ")
 	
 	if opt.lower() == 'y':
 		try:
@@ -68,7 +68,7 @@ def setupClient(serverName, serverPort, packetSize, mode,timeOut):
 			return serverName, serverPort, packetSize, mode, timeOut
 		
 	else:
-		print("Usando configuración por defecto.")
+		print("[CLIENTE]: USANDO LA CONFIGURACION POR DEFECTO!!!")
 		return serverName, serverPort, packetSize, mode, timeOut
 
 def generateERR(errCode):
@@ -83,24 +83,25 @@ def generateERR(errCode):
 def getFile():
 
 	while True:
-		filename = input("Nombre del archivo: ")
-		if len(filename) == 0:
-			print("ERROR - INTRODUCE UN ARCHIVO.")
-		else:
-			msgLength = filename.split(" ")
-			if len(msgLength) > 1:
-				print("ERROR - INTRODUCE SOLO UN ARCHIVO.")
+		print("RUTA ORIGEN:")
+		print("- Donde está ubicado. Ejemplo: /home/alex/archivo.txt")
+		localPath = input("> ")
+		print("====================================\n")
+		print("RUTA DESTINO:")
+		print("- Donde lo guardas. Ejemplo: /home/alex/archivo.txt")
+		serverPath = input("> ")	
 
 		if opCode == packetType['WRQ']:	
 
-			if not os.path.exists(filename):
-				print("[CLIENTE]: ERROR - EL ARCHIVO NO EXISTE.")
-				return -1
-		
-		return filename
+			if not os.path.exists(localPath):
+				print("[CLIENTE]: ERROR - EL ARCHIVO NO EXISTE EN ESTE DISPOSITIVO.")
+				continue
+		print("====================================\n")
+		return localPath, serverPath
+
 def createDir(save_file):
-	path = save_file.split("/");path = path[:-1];path = path[0]
-	os.makedirs(path)
+	path = save_file.split("/");path = path[:-1];path = "/".join(path)
+	if not os.path.exists(path): os.makedirs(path)
 	print("[CLIENTE]: Creando directorio {}".format(path))
 
 def raiseERR(data):
@@ -122,7 +123,7 @@ def generateRRQ_WRQ(filename):
 	#FILENAME | 0 | MODE | 0
 	xrqPacket += bytearray(filename.encode('utf-8'));xrqPacket.append(0)
 	xrqPacket += bytearray(bytes(mode, 'utf-8'));xrqPacket.append(0)
-	xrqPacket += bytearray(bytes('blocksize', 'utf-8'))
+	xrqPacket += bytearray(bytes('blksize', 'utf-8'))
 	xrqPacket.append(0);xrqPacket += packetSize.to_bytes(2,'big')
 	xrqPacket.append(0)
 	xrqPacket += bytearray(bytes('timeout', 'utf-8'));xrqPacket.append(0)
@@ -148,35 +149,35 @@ def sendDATA(blockNumber, data):
 
 	print("[CLIENTE]: Enviando DATA {}".format(blockNumber))
 	clientSocket.sendto(dataPacket, serverAddress)
-	#Try except para error entrega 4
 
 def generateGET():
 	
-	filename = getFile()
+	serverPath ,localPath = getFile()
 	
-
-	#DEBUG
-	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_get'))
-	else:		save_file = filename
+	save_file = localPath
 	if os.path.exists(save_file):
 		print("[CLIENTE]: Error: ARCHIVO YA EXISTE")
 		sys.exit()
+	try:
+		if mode == "octet":
+			#si save_file tiene "/", es directorio, entonces lo crea		
+			if "/" in save_file and not os.path.exists(save_file):
+				createDir(save_file)
 
-	if mode == "octet":
-		#si save_file tiene "/", es directorio, entonces lo crea		
-		if "/" in save_file and not os.path.exists(save_file):
-			createDir(save_file)
+			f = open(save_file, "wb")
 
-		f = open(save_file, "wb")
+		else:
+			#si save_file tiene "/", es directorio, entonces lo crea		
+			if "/" in save_file and not os.path.exists(save_file):
+				createDir(save_file)
+			
+			f = open(save_file, "w")
 
-	else:
-		#si save_file tiene "/", es directorio, entonces lo crea		
-		if "/" in save_file and not os.path.exists(save_file):
-			createDir(save_file)
-		
-		f = open(save_file, "w")
+	except Exception as e:
+		print("[CLIENTE]: Error al crear archivo: {}".format(e))
+		sys.exit()
 
-	generateRRQ_WRQ(filename)
+	generateRRQ_WRQ(serverPath)
 	#Recibe OACK
 	data, serverAddress = clientSocket.recvfrom(512)
 	#OPCODE
@@ -207,15 +208,15 @@ def generateGET():
 			elif opCode == packetType['OACK']:
 				print("[CLIENTE]: Recibe OACK")
 				#packetSize
-				bytePacketSize = data.split(b'blocksize')
-				#Split del blocksize
+				bytePacketSize = data.split(b'blksize')
+				#Split del blksize
 				strSize = bytePacketSize[1]	#Post split
 				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
 				#print(strSize)
 				try:
 					packetSizeServer = int(strSize)
 				except:
-					print("[CLIENTE]: No tenemos el mismo blocksize")
+					print("[CLIENTE]: Tamaño de paquete no valido")
 					f.close()
 					sys.exit()
 
@@ -257,13 +258,9 @@ def generateGET():
 
 def generatePUT():
 	#DEBUG
-	filename = getFile()
-	while filename == -1:
-		filename = getFile()
+	#destino origen
+	filename, save_file = getFile()
 		
-	if DEBUG_MODE: save_file = str(serverOptions.get('SERVEROPTIONS', 'test_put'))
-	else:		   save_file = filename
-	
 	generateRRQ_WRQ(save_file)
 	#Recibe OACK
 	WaitACK, serverAddress = clientSocket.recvfrom(512)
@@ -271,16 +268,10 @@ def generatePUT():
 
 	if mode == "octet":		f = open(filename,"rb")
 	else:					f = open(filename,"r")
-	#Try except para error entrega 4
-	blockNumber = 1
-	
-	#if len(WaitACK) == 0:
-	#	sendDATA(blockNumber, bytes("", "utf-8"))
-	#	WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
 
+	blockNumber = 1
 
 	while True:
-		#HAY QUE CAMBIARLO
 		if opCode == packetType["ACK"]:
 			ACKErr = int.from_bytes(WaitACK[2:], "big")
 			if ACKErr == blockNumber:
@@ -306,16 +297,16 @@ def generatePUT():
 				print("[CLIENTE]: Recibe OACK")
 
 				#packetSize
-				bytePacketSize = WaitACK.split(b'blocksize')
+				bytePacketSize = WaitACK.split(b'blksize')
 				#print(bytePacketSize)
-				#Split del blocksize
+				#Split del blksize
 				strSize = bytePacketSize[1]	#Post split
 				strSize = strSize[1:len(str(packetSize))+1]		#Los dos bytes
 				#print(strSize)
 				try:
 					packetSizeServer = int(strSize)
 				except:
-					print("[CLIENTE]: No tenemos el mismo blocksize")
+					print("[CLIENTE]: Tamaño de paquete no valido")
 					f.close()
 					sys.exit()
 
@@ -359,26 +350,29 @@ def generatePUT():
 clientSocket = socket(AF_INET, SOCK_DGRAM)
 while True:
 	serverName, serverPort, packetSize, mode, timeOut = setupClient(serverName, serverPort, packetSize, mode, timeOut)
-	if serverName != 0:
-		opt = input("Debug mode? (y/n): ")
-		if opt.lower() == "y": DEBUG_MODE = True;print("MODO DEBUG ACTIVADO!")
-		break
+	if serverName != 0: break
 
 serverAddress = (serverName, serverPort)
-
-print("Servidor {}:{}".format(serverName, serverPort))
-print("##############################################")
-print("MODE: {}".format(mode))
-print("Tamaño de paquetes: {}".format(packetSize))
+print("====================================")
+print("- SERVIDOR TFTP: {}:{}".format(serverName, serverPort))
+print("- Modo: {}".format(mode))
+print("- Tamaño de paquete: {}".format(packetSize))
+print("====================================")
 while True:		
-	method = str(input("Metodo? [GET/PUT]: "))
+	method = str(input("[GET/PUT]: "))
 	if method.lower() == "get" or method.lower() == "put":
 		break
 
 if method.lower() == "put":
+	print("====================================")
+	print("[CLIENTE]: USANDO METODO PUT")
+	print("====================================\n")	
 	opCode = packetType['WRQ']	#1
 	generatePUT()
 elif method.lower() == "get":
+	print("====================================")
+	print("[CLIENTE]: USANDO METODO GET")
+	print("====================================\n")	
 	opCode = packetType['RRQ']	#2
 	generateGET()
 
