@@ -290,6 +290,7 @@ def generatePUT():
 		if opCode == packetType["ACK"]:
 			# Hemos recibido ACK
 			ACKErr = int.from_bytes(WaitACK[2:], "big")
+			print("[CLIENTE]: Recibe ACK {}".format(ACKErr))	# (WaitACK[2]<<8) + WaitACK[3]
 			if ACKErr == blockNumber:
 				#Si no coincide el ACK recibido con el blockNumber que tenemos, hay Time Out
 				if len(data) == 0:
@@ -309,7 +310,7 @@ def generatePUT():
 			else:					sendDATA(blockNumber, bytes(data, encoding="utf-8"))
 			#Esperamos al ACK
 			WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
-			print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) + WaitACK[3]))	# (WaitACK[2]<<8) + WaitACK[3]
+			#
 			#Sacamos el Op Code
 			opCode = int.from_bytes(WaitACK[:2], "big")
 		elif opCode == packetType["OACK"]:
@@ -350,8 +351,8 @@ def generatePUT():
 				WaitACK, serverAddress = clientSocket.recvfrom(packetSize*2)
 				#Sacamos el OpCode
 				opCode = int.from_bytes(WaitACK[:2], "big")
-				if opCode == packetType['ACK']:
-					print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
+				#if opCode == packetType['ACK']:
+				#	print("[CLIENTE]: Recibe ACK {}".format( (WaitACK[2]<<8) +WaitACK[3]))
 				#else ha entrado un ERROR en vez de ACK
 				clientSocket.settimeout(None)			
 		elif opCode == packetType['ERR']:

@@ -1,5 +1,4 @@
 from ast import Break
-from ctypes import WinError
 import time
 from socket import *
 import os
@@ -235,7 +234,7 @@ def generatePUT(filename):
 	blockNumber = 0
 	while True:
 		#Time out, cambiable para que no surja el bucle de Time Out 
-		serverSocket.settimeout(timeOut/1000)	# 0.00005
+		serverSocket.settimeout(timeOut/10)	# 0.00005
 		try:
 			#Recibimos paquete
 			data, serverAddress = serverSocket.recvfrom(packetSize*2)
@@ -265,7 +264,6 @@ def generatePUT(filename):
 			generateACK(blockNumber)
 			serverSocket.settimeout(None)
 			#Recibimos siguiente paquete (Probablemente DATA o Error)	
-			data, serverAddress = serverSocket.recvfrom(packetSize*2)
 		except Exception as e:
 			generateERR_undefined(0,str(e))
 			sys.exit()			
