@@ -270,9 +270,9 @@
         <br>Ejemplo: 512 -> \x02\x00 si hacemos un split de los centinelas para quedarnos solo las opciones, este 512 quedaria en /x02.
 
         <br><br>
-        La solución fue pasar el integer a string, codificarlo y desde el receptor, pasarlo a string y finalmentea integer.
+        La solución fue pasar el integer a string, codificarlo, y desde el receptor, pasarlo a string y finalmente a integer.
         <br><br>
-        <b>4. </b>En el PUT llegaba a acomular muchos TimeOuts en cadena y llegaba a un punto en el que el
+        <b>4. </b>En el PUT llegaba a acumular muchos TimeOuts en cadena y llegaba a un punto en el que el
         programa se paraba porque el servidor estaba enviando al mismo tiempo que el cliente. Es decir, que ambos estaban enviando y 
         ninguno esperaba ni DATA ni ACK. <br><br>
         La solución aquí fue quitar un wait DATA que teniamos de más y reducir el Time Out.
